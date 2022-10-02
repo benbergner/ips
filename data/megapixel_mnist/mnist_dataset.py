@@ -3,11 +3,11 @@ import json
 import numpy as np
 import torch
 
-class MEGAMNIST(torch.utils.data.Dataset):
+class MegapixelMNIST(torch.utils.data.Dataset):
     """ Loads the Megapixel MNIST dataset """
 
-    def __init__(self, dataset_dir, patch_size, patch_stride, train=True):
-        with open(os.path.join(dataset_dir, "parameters.json")) as f:
+    def __init__(self, data_dir, patch_size, patch_stride, train=True):
+        with open(os.path.join(data_dir, "parameters.json")) as f:
             self.parameters = json.load(f)
 
         self.patch_size = patch_size
@@ -18,7 +18,7 @@ class MEGAMNIST(torch.utils.data.Dataset):
         H = self.parameters["height"]
 
         self._img_shape = (H, W, 1)
-        self._data = np.load(os.path.join(dataset_dir, filename), allow_pickle=True)
+        self._data = np.load(os.path.join(data_dir, filename), allow_pickle=True)
 
     def __len__(self):
         return len(self._data)

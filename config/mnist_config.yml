@@ -1,0 +1,27 @@
+
+opt:
+  n_epoch: 150          # number of epochs
+  B: 16                 # batch size
+  B_seq: 16             # sequential batch size, set either to
+                        # 1 (eager sequential loading) or B (eager or lazy loading)
+  n_epoch_warm_up: 10   # number of warm-up epochs
+  lr: 0.001             # learning rate
+dset:
+  n_channel: 1                                                      # number of input channels
+  n_class: 10                                                       # number of classes
+  data_dir: '../data/megapixel_mnist/dsets/mega_mnist_1500_noise'   # directory of dataset
+  num_workers: 4                                                    # number of workers
+ips:
+  M: 5                    # memory size
+  I: 100                  # iteration size
+  patch_size: [50, 50]    # dims of patch
+  patch_stride: [50, 50]  # stride of patch, use 25 per side for 50% overlap
+aggr:
+  n_tasks: 4              # number of tasks
+  H: 8                    # number of transformer layer heads
+  D: 128                  # dimension of features
+  D_k: 16                 # dimension of query/keys per head
+  D_v: 16                 # dimension of values per head
+  D_inner: 512            # hidden dimension of MLP
+  attn_dropout: 0.1       # attention dropout
+  dropout: 0.1            # standard dropout

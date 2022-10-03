@@ -49,7 +49,9 @@ loss_fns = {}
 for task in task_dict.values():
     loss_fns[task['name']] = loss_nll if task['act_fn'] == 'softmax' else loss_bce
 
-for epoch in range('n_epoch']):
+for epoch in range(n_epoch):
+    
+    # Training
     net.train()
 
     n_prep, n_prep_total = 0, 0
@@ -123,3 +125,75 @@ for epoch in range('n_epoch']):
 
             loss.backward()
             optimizer.step()
+
+            n_prep = 0
+            start_new_batch = True
+    
+    # Evaluation
+    n_prep, n_prep_total = 0, 0
+    start_new_batch = True
+
+    net.eval()
+    with torch.no_grad():
+        for data in test_loader:
+            image_patches = data['input'].to(device)
+
+            if start_new_batch:
+                mem_patch = torch.zeros((B, M, n_chan_in, *patch_size)).to(device)
+                if use_pos:
+                    mem_pos_enc = torch.zeros((B, M, D)).to(device)
+
+                labels = {}
+                for task in task_dict.values():
+                    if task['multi_label']:
+                        labels[task['name']] = torch.zeros((B, n_class), dtype=torch.float32).to(device)
+                    else:
+                        labels[task['name']] = torch.zeros((B,), dtype=torch.int64).to(device)
+                
+                start_new_batch = False
+            
+            mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
+        
+            n_seq, len_seq = mem_patch_iter.shape[:2]
+            mem_patch[n_prep:n_prep+n_seq, :len_seq] = mem_patch_iter
+            if use_pos:
+                mem_pos_enc[n_prep:n_prep+n_seq, :len_seq] = mem_pos_enc_iter
+            
+            for task in task_dict.values():
+                labels[task['name']][n_prep:n_prep+n_seq] = data[task['name']]
+            
+            n_prep += n_seq
+            n_prep_total += n_seq
+
+            batch_full = (n_prep == B)
+            is_last_batch = n_prep_total == len(test_loader)
+
+            if batch_full or is_last_batch:
+                if not batch_full:
+                    mem_patch = mem_patch[:n_prep]
+                    if use_pos:
+                        mem_pos_enc = mem_pos_enc[:n_prep]
+                    
+                    for task in task_dict.values():
+                        labels[task['name']] = labels[task['name']][:n_prep]
+                
+                preds = net(mem_patch, mem_pos_enc)
+
+                loss = 0
+                for task in task_dict.values():
+                    loss_fn = loss_fns[task['name']]
+                    label = labels[task['name']]
+                    pred = preds[task['name']]
+
+                    if task['act_fn'] == 'softmax':
+                        pred = torch.log(pred + eps)
+
+                    if task['multi_label']:
+                        pred = pred.view(-1)
+                        label = label.view(-1)
+
+                    loss += loss_fn(pred, label)
+                loss /= len(task_dict.values())
+
+                n_prep = 0
+                start_new_batch = True

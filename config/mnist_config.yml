@@ -1,46 +1,55 @@
-opt:
-  n_epoch: 150          # number of epochs
-  B: 16                 # batch size
-  B_seq: 16             # sequential batch size, set either to
-                        # 1 (eager sequential loading) or B (eager or lazy loading)
-  n_epoch_warm_up: 10   # number of warm-up epochs
-  lr: 0.001             # learning rate
-  wd: 0.1               # weight decay
-dset:
-  n_class: 10                                                       # number of classes
-  data_dir: '../data/megapixel_mnist/dsets/mega_mnist_1500_noise'   # directory of dataset
-  num_workers: 4                                                    # number of workers
-enc:
-  use_patch_enc: True     # should a patch encoder be used?
-  enc_type: 'resnet18'    # used backbone, set either to 'resnet18' or 'resnet50'
-  pretrained: False       # should ImageNet weights be used?
-  n_chan_in: 1            # number of input channels
-  n_res_blocks: 2         # number of residual ResNet blocks
-ips:
-  N: 900                  # Number of total patches, needs to be consistent with patch size/stride
-  M: 5                    # memory size
-  I: 100                  # iteration size
-  patch_size: [50, 50]    # dims of patch
-  patch_stride: [50, 50]  # stride of patch, use 25 per side for 50% overlap
-aggr:
-  use_pos: True                             # should positional encoding be used?
-  H: 8                                      # number of transformer layer heads
-  D: 128                                    # dimension of features
-  D_k: 16                                   # dimension of query/keys per head
-  D_v: 16                                   # dimension of values per head
-  D_inner: 512                              # hidden dimension of MLP
-  attn_dropout: 0.1                         # attention dropout
-  dropout: 0.1                              # standard dropout
+#opt
+n_epoch: 150          # number of epochs
+B: 16                 # batch size
+B_seq: 16             # sequential batch size, set either to
+                      # 1 (eager sequential loading) or B (eager or lazy loading)
+n_epoch_warmup: 10   # number of warm-up epochs
+lr: 0.001             # learning rate
+wd: 0.1               # weight decay
+
+#dset
+n_class: 10                                                       # number of classes
+data_dir: '../data/megapixel_mnist/dsets/mega_mnist_1500_noise'   # directory of dataset
+n_worker: 4                                                       # number of workers
+
+#enc
+use_patch_enc: True     # should a patch encoder be used?
+enc_type: 'resnet18'    # used backbone, set either to 'resnet18' or 'resnet50'
+pretrained: False       # should ImageNet weights be used?
+n_chan_in: 1            # number of input channels
+n_res_blocks: 2         # number of residual ResNet blocks
+
+#ips
+N: 900                  # Number of total patches, needs to be consistent with patch size/stride
+M: 5                    # memory size
+I: 100                  # iteration size
+patch_size: [50, 50]    # dims of patch
+patch_stride: [50, 50]  # stride of patch, use 25 per side for 50% overlap
+
+#aggr
+use_pos: True                             # should positional encoding be used?
+H: 8                                      # number of transformer layer heads
+D: 128                                    # dimension of features
+D_k: 16                                   # dimension of query/keys per head
+D_v: 16                                   # dimension of values per head
+D_inner: 512                              # hidden dimension of MLP
+attn_dropout: 0.1                         # attention dropout
+dropout: 0.1                              # standard dropout
+
 tasks:
   task1:
     name: 'majority'
     act_fn: 'softmax'
+    multi_label: False
   task2:
     name: 'max'
     act_fn: 'softmax'
+    multi_label: False
   task3:
     name: 'top'
     act_fn: 'softmax'
+    multi_label: False
   task4:
     name: 'multi'
     act_fn: 'sigmoid'
+    multi_label: True

@@ -20,34 +20,75 @@ dataset = 'mnist' # either one of {'mnist', 'camelyon', 'traffic'}
 
 # get config
 with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:
-    cfg = yaml.load(ymlfile)
+    c = yaml.load(ymlfile)
+
+    n_epoch, n_epoch_warmup, B, B_seq, lr, wd = c['n_epoch'], c['n_epoch_warmup'] c['B'], c['B_seq'], c['lr'], c['wd']
+    n_class, data_dir, n_worker = c['n_class'], c['data_dir'], c['n_worker']
+    use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks = c['use_patch_enc'], c['enc_type'], c['pretrained'], c['n_chan_in'], c['n_res_blocks']
+    N, M, I, patch_size, patch_stride = c['N'], c['M'], c['I'], c['patch_size'], c['patch_stride']
+    use_pos, H, D, D_k, D_v, D_inner, attn_dropout, dropout = c['use_pos'], c['H'], c['D'], c['D_k'], c['D_v'], c['D_inner'], c['attn_dropout'], c['dropout']
+    task_dict = c['tasks']
 
 # define datasets and dataloaders
-train_data = MegapixelMNIST(data_dir=cfg['dset']['data_dir'], patch_size=cfg['ips']['patch_size'],
-    patch_stride=cfg['ips']['patch_stride'], task_dict=cfg['tasks'], train=True)
-test_data = MegapixelMNIST(data_dir=cfg['dset']['data_dir'], patch_size=cfg['ips']['patch_size'],
-    patch_stride=cfg['ips']['patch_stride'], task_dict=cfg['tasks'], train=False)
-train_loader = torch.utils.data.DataLoader(train_data, batch_size=cfg['opt']['B_seq'],
-    shuffle=True, num_workers=cfg['dset']['num_workers'], pin_memory=True)
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=cfg['opt']['B_seq'],
-    shuffle=False, num_workers=cfg['dset']['num_workers'], pin_memory=True)
+train_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=True)
+test_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=False)
+train_loader = torch.utils.data.DataLoader(train_data, batch_size=B_seq, shuffle=True, num_workers=n_worker, pin_memory=True)
+test_loader = torch.utils.data.DataLoader(test_data, batch_size=B_seq, shuffle=False, num_workers=n_worker, pin_memory=True)
 
 # define network
-net = IPSNet(n_class=cfg['dset']['n_class'], use_patch_enc = cfg['enc']['use_patch_enc'],
-    enc_type = cfg['enc']['enc_type'], pretrained = cfg['enc']['pretrained'],
-    n_chan_in = cfg['enc']['n_chan_in'], n_res_blocks = cfg['enc']['n_res_blocks'],
-    use_pos = cfg['aggr']['use_pos'], task_dict = cfg['tasks'], N = cfg['ips']['N'],
-    M = cfg['ips']['M'], I = cfg['ips']['I'], D = cfg['aggr']['D'], H = cfg['aggr']['H'],
-    D_k = cfg['aggr']['D_k'], D_v = cfg['aggr']['D_v'], D_inner = cfg['aggr']['D_inner'],
-    dropout = cfg['aggr']['dropout'], attn_dropout = cfg['aggr']['attn_dropout'], device = device
+net = IPSNet(n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks, use_pos, task_dict,
+    N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device
 ).to(device)
 
 loss_nll = nn.NLLLoss()
 loss_bce = nn.BCELoss()
 
-optimizer = torch.optim.AdamW(net.parameters(), lr=0, weight_decay=cfg['opt']['wd'])
+optimizer = torch.optim.AdamW(net.parameters(), lr=0, weight_decay=wd)
 
 loss_fns = {}
-for task in cfg['tasks'].values():
+for task in task_dict.values():
     loss_fns[task['name']] = loss_nll if task['act_fn'] == 'softmax' else loss_bce
+
+for epoch in range('n_epoch']):
+
+    net.train()
+
+    n_prep, n_prep_total = 0, 0
+    start_new_batch = True
+
+    for data_it, data in enumerate(train_loader, start=epoch * len(train_loader)):
+        #patches_iter, labels_iter, max_labels_iter, top_labels_iter, multi_labels_iter = data[0].to(device), data[1].to(device), data[2].to(device), data[3].to(device), data[4].to(device).float()
+        image_patches = data['input'].to(device)
+
+        if start_new_batch:
+            mem_patch = torch.zeros((B, M, n_chan_in, *patch_size)).to(device)
+            if use_pos:
+                mem_pos_enc = torch.zeros((B, M, D)).to(device)
+
+            labels = {}
+            for task in task_dict.values():
+                if task['multi_label']:
+                    labels[task['name']] = torch.zeros((B, n_class), dtype=torch.float32).to(device)
+                else:
+                    labels[task['name']] = torch.zeros((B,), dtype=torch.int64).to(device)
+            
+            start_new_batch = False
+        
+        mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
+        
+        n_iter, n_mem = mem.shape[:2]
+        mem_patch[n_prep:n_prep+n_iter, :n_mem] = mem_patch_iter
+        if use_pos:
+            mem_pos_enc[n_prep:n_prep+n_iter, :n_mem] = mem_pos_enc_iter
+        """
+        labels[n_prep:n_prep+n_iter] = labels_iter
+        labels_max[n_prep:n_prep+n_iter] = max_labels_iter
+        labels_top[n_prep:n_prep+n_iter] = top_labels_iter
+        labels_multi[n_prep:n_prep+n_iter] = multi_labels_iter
+        """
+        n_prep += n_iter
+        n_prep_total += n_iter
+
+        batch_full = (n_prep == b)
+        is_last_batch = n_prep_total == len(train_loader)
 

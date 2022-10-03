@@ -10,7 +10,6 @@ class IPSNet(nn.Module):
     ''' Net that runs IPS, patch encoder, aggregator, class. head '''
 
     def get_patch_enc(self, enc_type, pretrained, n_chan_in, n_res_blocks):
-
         # get architecture for patch encoder
         if enc_type == 'resnet18': 
             res_net_fn = resnet18
@@ -42,6 +41,21 @@ class IPSNet(nn.Module):
 
         return nn.Sequential(layer_ls)
 
+    def get_output_layers(task_dict):
+        # define output layer for each task
+        output_layers = nn.ModuleDict()
+        for task in task_dict.values:
+            if task['act_fn'] == 'softmax':
+                torch_act_fn = nn.Softmax(dim=-1)
+            elif task['act_fn'] == 'sigmoid':
+                torch_act_fn = nn.Sigmoid()
+            
+            output_layers[task['name']] = nn.Sequential(
+                nn.Linear(D, C),
+                torch_act_fn
+            )
+        return output_layers
+
     def __init__(self, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks,
         use_pos, task_dict, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):
         super().__init__()
@@ -62,21 +76,25 @@ class IPSNet(nn.Module):
             self.pos_enc = pos_enc_1d(D, N).unsqueeze(0).to(device)
         
         # define output layer(s)
-        output_layers = nn.ModuleDict()
-        for task in task_dict.values:
-            if task['act_fn'] == 'softmax':
-                torch_act_fn = nn.Softmax(dim=-1)
-            elif task['act_fn'] == 'sigmoid':
-                torch_act_fn = nn.Sigmoid()
-            
-            output_layers[task['name']] = nn.Sequential(
-                nn.Linear(D, C),
-                torch_act_fn
-            )
+        self.output_layers = self.get_output_layers(task_dict)
+
+    def score_and_select(self, emb, emb_pos, M, idx):
+        # scores embeddings and selects the top-M embeddings
+        B = emb.shape[0]
+        D = self.D
+
+        emb_to_score = emb_pos if torch.is_tensor(emb_pos) else emb
+
+        attn = self.transf.get_scores(emb_to_score)
+
+        top_idx = torch.topk(attn, M, dim = -1)[1]
+        mem_emb = torch.gather(emb, 1, top_idx.unsqueeze(-1).repeat(1,1,D))
+
+        mem_idx = torch.gather(idx, 1, top_idx.view(B, -1))
+        return mem_emb, mem_idx
 
     def ips(self, patches):
-        
-        # get useful stuff
+        # get useful info
         M = self.M
         I = self.I
         D = self.D  
@@ -164,20 +182,6 @@ class IPSNet(nn.Module):
                 self.transf.train()
     
     return mem_patch.to(device), mem_pos
-
-    def score_and_select(self, emb, emb_pos, M, idx):
-        B = emb.shape[0]
-        D = self.D
-
-        emb_to_score = emb_pos if torch.is_tensor(emb_pos) else emb
-
-        attn = self.transf.get_scores(emb_to_score)
-
-        top_idx = torch.topk(attn, M, dim = -1)[1]
-        mem_emb = torch.gather(emb, 1, top_idx.unsqueeze(-1).repeat(1,1,D))
-
-        mem_idx = torch.gather(idx, 1, top_idx.view(B, -1))
-        return mem_emb, mem_idx
 
     def forward(self, mem_patch, mem_pos):
         patch_shape = mem_patch.shape

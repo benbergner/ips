@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from utils.utils import adjust_learning_rate
+from utils.utils import adjust_learning_rate, eps
 from data.megapixel_mnist.mnist_dataset import MegapixelMNIST
 from architecture.ips_net import IPSNet
 
@@ -103,4 +103,23 @@ for epoch in range('n_epoch']):
             adjust_learning_rate(n_epoch_warmup, n_epoch, lr, optimizer, train_loader, data_it+1)
             optimizer.zero_grad()
 
-            pred, attns = net(patches_mem, pos_enc_mem)
+            preds = net(mem_patch, mem_pos_enc)
+
+            loss = 0
+            for task in task_dict.values():
+                loss_fn = loss_fns[task['name']]
+                label = labels[task['name']]
+                pred = preds[task['name']]
+
+                if task['act_fn'] == 'softmax':
+                    pred = torch.log(pred + eps)
+
+                if task['multi_label']:
+                    pred = pred.view(-1)
+                    label = label.view(-1)
+
+                loss += loss_fn(pred, label)
+            loss /= len(task_dict.values())
+
+            loss.backward()
+            optimizer.step()

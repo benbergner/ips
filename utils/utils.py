@@ -1,5 +1,8 @@
 import math
 
+#constants
+eps = 1e-6
+
 def adjust_learning_rate(n_epoch_warmup, n_epoch, max_lr, optimizer, dloader, step):
     max_steps = int(n_epoch * len(dloader))
     warmup_steps = int(n_epoch_warmup * len(dloader))

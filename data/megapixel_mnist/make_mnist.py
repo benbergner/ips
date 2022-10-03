@@ -182,6 +182,8 @@ class MegapixelMNIST:
         print("y_multi: ", y_multi)
         sys.exit()
 
+
+
         return x, y, y_max, y_top, y_multi
 
 
@@ -194,36 +196,25 @@ def sparsify(dataset):
 
     print("Sparsifying dataset")
     data = []
-    for i, (x, y, y_max, y_top, y_multi) in enumerate(dataset):
+    for i, (x, y_maj, y_max, y_top, y_multi) in enumerate(dataset):
         print(
             "\u001b[1000DProcessing {:5d} /  {:5d}".format(i+1, len(dataset)),
             end="",
             flush=True
         )
-        data.append((
-            to_sparse(x),
-            y,
-            y_max,
-            y_top,
-            y_multi
-        ))
+
+        data.append({
+            'input': to_sparse(x),
+            'majority': y_maj,
+            'max': y_max,
+            'top': y_top,
+            'multi': y_multi
+        })
     print()
     return data
 
 #python make_mnist.py --n_train 10 --n_test 10 /dhc/home/benjamin.bergner/netstore-old/data/mega_mnist_1000_noise/multi_label
 #python make_mnist.py --width 1000 --height 1000 /dhc/home/benjamin.bergner/netstore-old/data/mega_mnist_1000_more_noise/multi_label
-
-# 1000 --> 33
-# 1500 --> 50
-# 2000 --> 66
-# 3000 --> 100
-# 4000 --> 133
-# 5000 --> 166
-# 6000 --> 200
-# 7000 --> 233
-# 8000 --> 266
-# 9000 --> 300
-# 10000 --> 333
 
 def main(argv):
     parser = argparse.ArgumentParser(

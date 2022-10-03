@@ -43,7 +43,7 @@ class IPSNet(nn.Module):
         return nn.Sequential(layer_ls)
 
     def __init__(self, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks,
-        use_pos, n_tasks, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):#n_class, n_channel, hw, mem_size, rand_size, iter_size, n_backbone_layer, n_layer, n_token, n_head, d_k, d_v, d_model, d_inner, attn_dropout, dropout, device, use_pretrained=True, outp_act_fn='softmax', use_local_pred=False
+        use_pos, task_dict, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):#n_class, n_channel, hw, mem_size, rand_size, iter_size, n_backbone_layer, n_layer, n_token, n_head, d_k, d_v, d_model, d_inner, attn_dropout, dropout, device, use_pretrained=True, outp_act_fn='softmax', use_local_pred=False
         super().__init__()
 
         self.use_pos = use_pos
@@ -61,7 +61,17 @@ class IPSNet(nn.Module):
             self.pos_enc = pos_enc_1d(D, N).unsqueeze(0).to(device)
         
         # define output layer(s)
-        self.outp_layers = nn.ModuleList([nn.Linear(D, C) for i in range(n_tasks)])
+        output_layers = nn.ModuleDict()
+        for task in task_dict.values:
+            if task['act_fn'] == 'softmax':
+                torch_act_fn = nn.Softmax(dim=-1)
+            elif task['act_fn'] == 'sigmoid':
+                torch_act_fn = nn.Sigmoid()
+            
+            output_layers[task['name']] = nn.Sequential(
+                nn.Linear(D, C),
+                torch_act_fn
+            )
 
     def IPS(self, patches):
         

@@ -6,7 +6,7 @@ import torch
 class MegapixelMNIST(torch.utils.data.Dataset):
     """ Loads the Megapixel MNIST dataset """
 
-    def __init__(self, data_dir, patch_size, patch_stride, train=True):
+    def __init__(self, data_dir, patch_size, patch_stride, task_dict, train=True):
         with open(os.path.join(data_dir, "parameters.json")) as f:
             self.parameters = json.load(f)
 
@@ -35,7 +35,7 @@ class MegapixelMNIST(torch.utils.data.Dataset):
 
         # Fill the sparse representations
         data = self._data[i]
-        img[data[1][0]] = data[1][1]
+        img[data['input'][0]] = data['input'][1]
 
         # Reshape to final shape        
         img = img.reshape(self._img_shape)
@@ -52,12 +52,8 @@ class MegapixelMNIST(torch.utils.data.Dataset):
         #_, _, c, h, w = patches.shape
         patches = patches.reshape(-1, *patches.shape[2:])
 
-        label = np.argmax(data[2])
-        #if len(data) > 3:
-        max_label = data[3]
-        top_label = data[4]
-        multi_label = data[5]
+        data_dict = {'input': patches}
+        for task in self.task_dict.values():
+            data_dict[task['name']] = data[task['name']] 
 
-            return patches, label, max_label, top_label, multi_label
-        else:
-            return patches, label
+        return data_dict

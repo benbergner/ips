@@ -64,6 +64,7 @@ class IPSNet(nn.Module):
         self.I = I
         self.D = D 
         self.use_pos = use_pos
+        self.task_dict = task_dict
         self.device = device
 
         if use_patch_enc:
@@ -203,9 +204,10 @@ class IPSNet(nn.Module):
 
         image_emb = self.transf(mem_emb, return_attns=False)
 
-        preds = []
-        for i, layer in enumerate(self.outp_layers):
-            pred = layer(image_emb[:,i]) # .view(b, -1)
-            preds.append(pred)
- 
+        preds = {}
+        for task in self.task_dict.values():
+            layer = self.output_layers[task['name']]
+            emb = image_emb[:,task['id']]
+            preds[task['name']] = layer(emb)            
+
         return preds

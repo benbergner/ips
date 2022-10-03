@@ -1,9 +1,9 @@
-def pos_enc_1d(D, seq_len):
+def pos_enc_1d(D, len_seq):
     if D % 2 != 0:
         raise ValueError("Cannot use sin/cos positional encoding with "
                          "odd dim (got dim={:d})".format(D))
-    pe = torch.zeros(seq_len, D)
-    position = torch.arange(0, seq_len).unsqueeze(1)
+    pe = torch.zeros(len_seq, D)
+    position = torch.arange(0, len_seq).unsqueeze(1)
     div_term = torch.exp((torch.arange(0, D, 2, dtype=torch.float) *
                          -(math.log(10000.0) / D)))
     pe[:, 0::2] = torch.sin(position.float() * div_term)
@@ -60,10 +60,10 @@ class MultiHeadCrossAttention(nn.Module):
 
     def get_attn(self, x):
         D_k, H, n_token = self.D_k, self.H, self.n_token
-        B, seq_len = x.shape[:2]
+        B, len_seq = x.shape[:2]
 
         q = self.q_w(self.q).view(1, n_token, H, D_k)
-        k = self.k_w(x).view(B, seq_len, H, D_k)
+        k = self.k_w(x).view(B, len_seq, H, D_k)
 
         q, k = q.transpose(1, 2), k.transpose(1, 2)
 
@@ -73,14 +73,14 @@ class MultiHeadCrossAttention(nn.Module):
 
     def forward(self, x):
         D_k, D_v, H, n_token = self.D_k, self.D_v, self.H, self.n_token
-        B, seq_len = x.shape[:2]
+        B, len_seq = x.shape[:2]
 
         # project and separate heads
         q = self.q_w(self.q).view(1, n_token, H, D_k)
-        k = self.k_w(x).view(B, seq_len, H, D_k)
-        v = self.v_w(x).view(B, seq_len, H, D_v)
+        k = self.k_w(x).view(B, len_seq, H, D_k)
+        v = self.v_w(x).view(B, len_seq, H, D_v)
 
-        # transpose for attention dot product: B x H x seq_len x D_k or D_v
+        # transpose for attention dot product: B x H x len_seq x D_k or D_v
         q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
         # cross-attention
         x, attn = self.attention(q, k, v)

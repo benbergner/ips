@@ -37,19 +37,23 @@ attn_dropout: 0.1                         # attention dropout
 dropout: 0.1                              # standard dropout
 
 tasks:
-  task1:
+  task0:
+    id: 0
     name: 'majority'
     act_fn: 'softmax'
     multi_label: False
-  task2:
+  task1:
+    id: 1
     name: 'max'
     act_fn: 'softmax'
     multi_label: False
-  task3:
+  task2:
+    id: 2
     name: 'top'
     act_fn: 'softmax'
     multi_label: False
-  task4:
+  task3:
+    id: 3
     name: 'multi'
     act_fn: 'sigmoid'
     multi_label: True

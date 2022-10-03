@@ -50,7 +50,6 @@ for task in task_dict.values():
     loss_fns[task['name']] = loss_nll if task['act_fn'] == 'softmax' else loss_bce
 
 for epoch in range('n_epoch']):
-
     net.train()
 
     n_prep, n_prep_total = 0, 0
@@ -76,19 +75,32 @@ for epoch in range('n_epoch']):
         
         mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
         
-        n_iter, n_mem = mem.shape[:2]
-        mem_patch[n_prep:n_prep+n_iter, :n_mem] = mem_patch_iter
+        # fill batch
+        n_seq, len_seq = mem_patch_iter.shape[:2]
+        mem_patch[n_prep:n_prep+n_seq, :len_seq] = mem_patch_iter
         if use_pos:
-            mem_pos_enc[n_prep:n_prep+n_iter, :n_mem] = mem_pos_enc_iter
-        """
-        labels[n_prep:n_prep+n_iter] = labels_iter
-        labels_max[n_prep:n_prep+n_iter] = max_labels_iter
-        labels_top[n_prep:n_prep+n_iter] = top_labels_iter
-        labels_multi[n_prep:n_prep+n_iter] = multi_labels_iter
-        """
-        n_prep += n_iter
-        n_prep_total += n_iter
+            mem_pos_enc[n_prep:n_prep+n_seq, :len_seq] = mem_pos_enc_iter
+        
+        for task in task_dict.values():
+            labels[task['name']][n_prep:n_prep+n_seq] = data[task['name']]
+        
+        n_prep += n_seq
+        n_prep_total += n_seq
 
-        batch_full = (n_prep == b)
+        batch_full = (n_prep == B)
         is_last_batch = n_prep_total == len(train_loader)
 
+        if batch_full or is_last_batch:
+            if not batch_full:
+                # shrink batch
+                mem_patch = mem_patch[:n_prep]
+                if use_pos:
+                    mem_pos_enc = mem_pos_enc[:n_prep]
+                
+                for task in task_dict.values():
+                    labels[task['name']] = labels[task['name']][:n_prep]
+            
+            adjust_learning_rate(n_epoch_warmup, n_epoch, lr, optimizer, train_loader, data_it+1)
+            optimizer.zero_grad()
+
+            pred, attns = net(patches_mem, pos_enc_mem)

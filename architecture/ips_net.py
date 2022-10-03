@@ -43,13 +43,14 @@ class IPSNet(nn.Module):
         return nn.Sequential(layer_ls)
 
     def __init__(self, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks,
-        use_pos, task_dict, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):#n_class, n_channel, hw, mem_size, rand_size, iter_size, n_backbone_layer, n_layer, n_token, n_head, d_k, d_v, d_model, d_inner, attn_dropout, dropout, device, use_pretrained=True, outp_act_fn='softmax', use_local_pred=False
+        use_pos, task_dict, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):
         super().__init__()
 
-        self.use_pos = use_pos
         self.M = M
         self.I = I
         self.D = D 
+        self.use_pos = use_pos
+        self.device = device
 
         if use_patch_enc:
             self.patch_encoder = self.get_patch_enc(enc_type, pretrained, n_chan_in, n_res_blocks))
@@ -73,7 +74,7 @@ class IPSNet(nn.Module):
                 torch_act_fn
             )
 
-    def IPS(self, patches):
+    def ips(self, patches):
         
         # get useful stuff
         M = self.M
@@ -146,7 +147,7 @@ class IPSNet(nn.Module):
                 else:
                     all_emb_pos = None
 
-                mem_emb, mem_idx = self.select_feat(all_emb, all_idx, all_emb_pos)#feat_iter_pos
+                mem_emb, mem_idx = self.score_and_select(all_emb, all_emb_pos, M, all_idx)
             
             # select patches
             mem_patch = torch.gather(patches, 1, 
@@ -163,6 +164,20 @@ class IPSNet(nn.Module):
                 self.transf.train()
     
     return mem_patch.to(device), mem_pos
+
+    def score_and_select(self, emb, emb_pos, M, idx):
+        B = emb.shape[0]
+        D = self.D
+
+        emb_to_score = emb_pos if torch.is_tensor(emb_pos) else emb
+
+        attn = self.transf.get_scores(emb_to_score)
+
+        top_idx = torch.topk(attn, M, dim = -1)[1]
+        mem_emb = torch.gather(emb, 1, top_idx.unsqueeze(-1).repeat(1,1,D))
+
+        mem_idx = torch.gather(idx, 1, top_idx.view(B, -1))
+        return mem_emb, mem_idx
 
     def forward(self, mem_patch, mem_pos):
         patch_shape = mem_patch.shape

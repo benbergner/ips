@@ -1,5 +1,4 @@
 def pos_enc_1d(D, seq_len):
-    
     if D % 2 != 0:
         raise ValueError("Cannot use sin/cos positional encoding with "
                          "odd dim (got dim={:d})".format(D))
@@ -12,18 +11,22 @@ def pos_enc_1d(D, seq_len):
 
     return pe
 
-class DotProductAttention(nn.Module):
+class ScaledDotProductAttention(nn.Module):
     ''' Dot-Product Attention '''
 
     def __init__(self, temperature, attn_dropout=0.1):
         super().__init__()
-
         self.temperature = temperature
         self.dropout = nn.Dropout(attn_dropout)
 
-    def forward(self, q, k, v):
+    def compute_attn(self, q, k):
         attn = torch.matmul(q / self.temperature, k.transpose(2, 3))
         attn = self.dropout(torch.softmax(attn, dim=-1))
+
+        return attn
+
+    def forward(self, q, k, v):
+        attn = self.compute_attn(q, k)
         output = torch.matmul(attn, v)
 
         return output, attn
@@ -33,7 +36,6 @@ class MultiHeadCrossAttention(nn.Module):
 
     def __init__(self, n_token, H, D, D_k, D_v, attn_dropout=0.1, dropout=0.1):
         super().__init__()
-
         self.n_token = n_token
         self.H = H
         self.D_k = D_k
@@ -48,7 +50,7 @@ class MultiHeadCrossAttention(nn.Module):
         self.v_w = nn.Linear(D, H * D_v, bias=False)
         self.fc = nn.Linear(H * D_v, D, bias=False)
 
-        self.attention = DotProductAttention(
+        self.attention = ScaledDotProductAttention(
             temperature=D_k ** 0.5,
             attn_dropout=attn_dropout
         )
@@ -56,8 +58,20 @@ class MultiHeadCrossAttention(nn.Module):
         self.dropout = nn.Dropout(dropout)
         self.layer_norm = nn.LayerNorm(D, eps=1e-6)
 
-    def forward(self, x):
+    def get_attn(self, x):
+        D_k, H, n_token = self.D_k, self.H, self.n_token
+        B, seq_len = x.shape[:2]
 
+        q = self.q_w(self.q).view(1, n_token, H, D_k)
+        k = self.k_w(x).view(B, seq_len, H, D_k)
+
+        q, k = q.transpose(1, 2), k.transpose(1, 2)
+
+        attn = self.attention.compute_attn(q, k)
+
+        return attn
+
+    def forward(self, x):
         D_k, D_v, H, n_token = self.D_k, self.D_v, self.H, self.n_token
         B, seq_len = x.shape[:2]
 
@@ -87,14 +101,12 @@ class MLP(nn.Module):
 
     def __init__(self, D, D_inner, dropout=0.1):
         super().__init__()
-
         self.w_1 = nn.Linear(D, D_inner)
         self.w_2 = nn.Linear(D_inner, D)
         self.layer_norm = nn.LayerNorm(D, eps=1e-6)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
-
         residual = x
 
         x = self.w_2(torch.relu(self.w_1(x)))
@@ -110,15 +122,15 @@ class Transformer(nn.Module):
 
     def __init__(self, n_token, H, D, D_k, D_v, D_inner, attn_dropout=0.1, dropout=0.1):
         super().__init__()
-
         self.crs_attn = MultiHeadCrossAttention(n_token, H, D, D_k, D_v, attn_dropout=attn_dropout, dropout=dropout)
         self.mlp = MLP(D, D_inner, dropout=dropout)
     
-    def forward(self, x, return_attns=False):
+    def get_scores(self, x):
+        attn = self.crs_attn.get_attn(x)
+        return attn.mean(dim=1).transpose(1, 2).mean(-1)
 
+    def forward(self, x):
         x, attn = self.crs_attn(x)
         x = self.mlp(x)
 
-        if return_attns:
-            return x, attn
-        return x
+        return x, attn

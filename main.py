@@ -9,7 +9,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from utils.utils import adjust_learning_rate, eps
+from utils.utils import adjust_learning_rate, eps, Evaluator
 from data.megapixel_mnist.mnist_dataset import MegapixelMNIST
 from architecture.ips_net import IPSNet
 
@@ -48,6 +48,9 @@ optimizer = torch.optim.AdamW(net.parameters(), lr=0, weight_decay=wd)
 loss_fns = {}
 for task in task_dict.values():
     loss_fns[task['name']] = loss_nll if task['act_fn'] == 'softmax' else loss_bce
+
+train_evaluator = Evaluator(task_dict)
+test_evaluator = Evaluator(task_dict)
 
 for epoch in range(n_epoch):
     
@@ -108,10 +111,13 @@ for epoch in range(n_epoch):
             preds = net(mem_patch, mem_pos_enc)
 
             loss = 0
+            task_losses, task_preds, task_labels = {}, {}, {}
             for task in task_dict.values():
-                loss_fn = loss_fns[task['name']]
-                label = labels[task['name']]
-                pred = preds[task['name']]
+                t = task['name']
+
+                loss_fn = loss_fns[t]
+                label = labels[t]
+                pred = preds[t]
 
                 if task['act_fn'] == 'softmax':
                     pred = torch.log(pred + eps)
@@ -120,15 +126,26 @@ for epoch in range(n_epoch):
                     pred = pred.view(-1)
                     label = label.view(-1)
 
-                loss += loss_fn(pred, label)
+                task_preds[t] = pred.cpu().numpy()
+                task_labels[t] = label.cpu().numpy()
+                task_loss = loss_fn(pred, label)
+                task_losses[t] = task_loss.item()
+
+                loss += task_loss
+                
             loss /= len(task_dict.values())
 
             loss.backward()
             optimizer.step()
 
+            train_evaluator.update(task_losses, task_preds, task_labels)
+
             n_prep = 0
             start_new_batch = True
     
+    train_evaluator.compute_metric()
+    train_evaluator.print_stats(epoch)
+
     # Evaluation
     n_prep, n_prep_total = 0, 0
     start_new_batch = True
@@ -180,10 +197,13 @@ for epoch in range(n_epoch):
                 preds = net(mem_patch, mem_pos_enc)
 
                 loss = 0
+                task_losses, task_preds, task_labels = {}, {}, {}
                 for task in task_dict.values():
-                    loss_fn = loss_fns[task['name']]
-                    label = labels[task['name']]
-                    pred = preds[task['name']]
+                    t = task['name']
+
+                    loss_fn = loss_fns[t]
+                    label = labels[t]
+                    pred = preds[t]
 
                     if task['act_fn'] == 'softmax':
                         pred = torch.log(pred + eps)
@@ -191,9 +211,18 @@ for epoch in range(n_epoch):
                     if task['multi_label']:
                         pred = pred.view(-1)
                         label = label.view(-1)
+                    
+                    task_preds[t] = pred.cpu().numpy()
+                    task_labels[t] = label.cpu().numpy()
+                    task_loss = loss_fn(pred, label)
+                    task_losses[t] = task_loss.item()
 
-                    loss += loss_fn(pred, label)
+                    loss += task_loss
+
                 loss /= len(task_dict.values())
 
                 n_prep = 0
                 start_new_batch = True
+    
+    test_evaluator.compute_metric()
+    test_evaluator.print_stats(epoch)

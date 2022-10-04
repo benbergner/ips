@@ -42,18 +42,22 @@ tasks:
     name: 'majority'
     act_fn: 'softmax'
     multi_label: False
+    metric: 'accuracy'
   task1:
     id: 1
     name: 'max'
     act_fn: 'softmax'
     multi_label: False
+    metric: 'accuracy'
   task2:
     id: 2
     name: 'top'
     act_fn: 'softmax'
     multi_label: False
+    metric: 'accuracy'
   task3:
     id: 3
     name: 'multi'
     act_fn: 'sigmoid'
     multi_label: True
+    metric: 'multilabel_accuracy'

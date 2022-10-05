@@ -175,15 +175,6 @@ class MegapixelMNIST:
         y_top = self._top_targets[i]
         y_multi = np.eye(10)[self._digits[i]].sum(0).clip(0,1)
 
-        print("x shape: ", x.shape)
-        print("y: ", y)
-        print("y max: ", y_max)
-        print("y top: ", y_top)
-        print("y_multi: ", y_multi)
-        sys.exit()
-
-
-
         return x, y, y_max, y_top, y_multi
 
 
@@ -212,9 +203,6 @@ def sparsify(dataset):
         })
     print()
     return data
-
-#python make_mnist.py --n_train 10 --n_test 10 /dhc/home/benjamin.bergner/netstore-old/data/mega_mnist_1000_noise/multi_label
-#python make_mnist.py --width 1000 --height 1000 /dhc/home/benjamin.bergner/netstore-old/data/mega_mnist_1000_more_noise/multi_label
 
 def main(argv):
     parser = argparse.ArgumentParser(
@@ -310,5 +298,6 @@ def main(argv):
     data = sparsify(test)
     np.save(path.join(args.output_directory, "test.npy"), data)
 
+#how to use: python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mnist_1500
 if __name__ == "__main__":
     main(None)

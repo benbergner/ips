@@ -1,3 +1,4 @@
+import sys
 import math
 
 import torch
@@ -35,31 +36,37 @@ class IPSNet(nn.Module):
         if n_res_blocks == 4:
             layer_ls.extend([
                 res_net.layer3,
-                res_net.layer4,
-                res_net.avgpool
+                res_net.layer4
             ])
+        
+        layer_ls.append(res_net.avgpool)
 
-        return nn.Sequential(layer_ls)
+        return nn.Sequential(*layer_ls)
 
-    def get_output_layers(task_dict):
+    def get_output_layers(self, task_dict):
         # define output layer for each task
+
+        D = self.D
+        n_class = self.n_class
+
         output_layers = nn.ModuleDict()
-        for task in task_dict.values:
+        for task in task_dict.values():
             if task['act_fn'] == 'softmax':
                 torch_act_fn = nn.Softmax(dim=-1)
             elif task['act_fn'] == 'sigmoid':
                 torch_act_fn = nn.Sigmoid()
             
             output_layers[task['name']] = nn.Sequential(
-                nn.Linear(D, C),
+                nn.Linear(D, n_class),
                 torch_act_fn
             )
         return output_layers
 
     def __init__(self, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks,
-        use_pos, task_dict, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):
+        use_pos, task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):
         super().__init__()
 
+        self.n_class = n_class
         self.M = M
         self.I = I
         self.D = D 
@@ -68,7 +75,7 @@ class IPSNet(nn.Module):
         self.device = device
 
         if use_patch_enc:
-            self.patch_encoder = self.get_patch_enc(enc_type, pretrained, n_chan_in, n_res_blocks))
+            self.patch_encoder = self.get_patch_enc(enc_type, pretrained, n_chan_in, n_res_blocks)
 
         # define the multi-head cross-attention transformer
         self.transf = Transformer(n_token, H, D, D_k, D_v, D_inner, attn_dropout, dropout)
@@ -81,8 +88,7 @@ class IPSNet(nn.Module):
 
     def score_and_select(self, emb, emb_pos, M, idx):
         # scores embeddings and selects the top-M embeddings
-        B = emb.shape[0]
-        D = self.D
+        B, D = emb.shape[0], emb.shape[2]
 
         emb_to_score = emb_pos if torch.is_tensor(emb_pos) else emb
 
@@ -130,7 +136,7 @@ class IPSNet(nn.Module):
             # init memory
             init_patch = patches[:,:M].to(device)
             if is_image:
-                mem_emb = self.patch_encoder(init_patch.reshape(-1, *patch_shape.shape[2:]))
+                mem_emb = self.patch_encoder(init_patch.reshape(-1, *patch_shape[2:]))
                 mem_emb = mem_emb.view(B, M, -1)
             else:
                 mem_emb = init_patch
@@ -153,24 +159,27 @@ class IPSNet(nn.Module):
 
                 # embed patches
                 if is_image:
-                    iter_emb = self.patch_encoder(iter_patch.reshape(-1, *patch_shape.shape[2:]))
+                    iter_emb = self.patch_encoder(iter_patch.reshape(-1, *patch_shape[2:]))
                     iter_emb = iter_emb.view(B, -1, D)
                 else:
                     iter_emb = iter_patch
                 
                 # concatenate with memory buffer
-                all_emb = torch.cat(mem_emb, iter_emb)
-                all_idx = torch.cat((mem_idx, iter_idx), dim=-1)
+                all_emb = torch.cat((mem_emb, iter_emb), dim=1)
+                all_idx = torch.cat((mem_idx, iter_idx), dim=1)
                 if use_pos:
                     all_emb_pos = iter_emb + iter_pos_enc
                 else:
                     all_emb_pos = None
 
                 mem_emb, mem_idx = self.score_and_select(all_emb, all_emb_pos, M, all_idx)
-            
+
+            print("mem_idx: ", mem_idx.shape)
+
             # select patches
+            n_dim_expand = len(patch_shape) - 2
             mem_patch = torch.gather(patches, 1, 
-                mem_idx.view(B, -1, torch.ones(patch_shape[2:])).repeat(1, 1, *patch_shape[2:]).to(patches.device)
+                mem_idx.view(B, -1, *(1,)*n_dim_expand).repeat(1, 1, *patch_shape[2:]).to(patches.device)
             )
             if use_pos:
                 mem_pos = torch.gather(pos_enc, 1, mem_idx.unsqueeze(-1).repeat(1, 1, D))
@@ -182,15 +191,15 @@ class IPSNet(nn.Module):
                 self.patch_encoder.train()
                 self.transf.train()
     
-    return mem_patch.to(device), mem_pos
+        return mem_patch.to(device), mem_pos
 
     def forward(self, mem_patch, mem_pos):
         patch_shape = mem_patch.shape
-        B, M = patch_shape.shape[:2]
+        B, M = patch_shape[:2]
 
         if len(patch_shape) == 3: # B, N, D
             is_image = False
-        elif len(patches.shape) == 5: # B, N, n_chan_in, height, width
+        elif len(patch_shape) == 5: # B, N, n_chan_in, height, width
             is_image = True
         else:
             raise ValueError('The input is neither an image (5 dim) nor a feature vector (3 dim).')

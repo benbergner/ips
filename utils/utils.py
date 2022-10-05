@@ -1,6 +1,9 @@
 import math
 import numpy as np
 from sklearn.metrics import accuracy_score
+from collections import defaultdict
+
+from torch import nn
 
 #constants
 eps = 1e-6
@@ -29,20 +32,21 @@ class Evaluator(nn.Module):
         super().__init__()
 
         self.task_dict = task_dict
-        self.losses_it = {}
-        self.losses_epoch = {}
-        self.y_preds = {}
-        self.y_trues = {}
-        self.metrics = {}
+        self.losses_it = defaultdict(list)
+        self.losses_epoch = defaultdict(list)
+        self.y_preds = defaultdict(list)
+        self.y_trues = defaultdict(list)
+        self.metrics = defaultdict(list)
 
+        """
         for task in task_dict.values():
             t = task['name']
-            losses_it[t] = []
-            losses_epoch[t] = []
-            y_preds[t] = []
-            y_trues[t] = []
-            metrics[t] = []
-    
+            self.losses_it[t] = []
+            self.losses_epoch[t] = []
+            self.y_preds[t] = []
+            self.y_trues[t] = []
+            self.metrics[t] = []
+        """
     def update(self, next_loss, next_y_pred, next_y_true):
 
         for task in self.task_dict.values():

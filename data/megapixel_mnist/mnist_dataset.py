@@ -12,6 +12,7 @@ class MegapixelMNIST(torch.utils.data.Dataset):
 
         self.patch_size = patch_size
         self.patch_stride = patch_stride
+        self.task_dict = task_dict
 
         filename = "train.npy" if train else "test.npy"
         W = self.parameters["width"]

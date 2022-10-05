@@ -1,3 +1,8 @@
+import math
+
+import torch
+from torch import nn
+
 def pos_enc_1d(D, len_seq):
     if D % 2 != 0:
         raise ValueError("Cannot use sin/cos positional encoding with "

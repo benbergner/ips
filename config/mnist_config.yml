@@ -21,12 +21,14 @@ n_chan_in: 1            # number of input channels
 n_res_blocks: 2         # number of residual ResNet blocks
 
 #ips
-n_token: 4              # Number of learnable query tokens
-N: 900                  # Number of total patches, needs to be consistent with patch size/stride
-M: 100                  # memory size
-I: 100                  # iteration size
-patch_size: [50, 50]    # dims of patch
-patch_stride: [50, 50]  # stride of patch, use 25 per side for 50% overlap
+shuffle: True               # should patches be shuffled?
+shuffle_style: 'batch'      # shuffle each instance the same way? 'batch' or 'instance'
+n_token: 4                  # Number of learnable query tokens
+N: 900                      # Number of total patches, needs to be consistent with patch size/stride
+M: 100                      # memory size
+I: 100                      # iteration size
+patch_size: [50, 50]        # dims of patch
+patch_stride: [50, 50]      # stride of patch, use 25 per side for 50% overlap
 
 #aggr
 use_pos: True                             # should positional encoding be used?

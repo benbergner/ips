@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.metrics import accuracy_score
 from collections import defaultdict
 
+import torch
 from torch import nn
 
 #constants
@@ -25,6 +26,33 @@ def adjust_learning_rate(n_epoch_warmup, n_epoch, max_lr, optimizer, dloader, st
         lr = max_lr * q + end_lr * (1 - q)
 
     optimizer.param_groups[0]['lr'] = lr
+
+def shuffle_batch(x, shuffle_idx=None):
+    """ shuffles each instance in batch the same way """
+
+    if not torch.is_tensor(shuffle_idx):
+        seq_len = x.shape[1]
+        shuffle_idx = torch.randperm(seq_len)
+    x = x[:, shuffle_idx]
+    
+    return x, shuffle_idx
+
+def shuffle_instance(x, axis, shuffle_idx=None):
+    """ shuffles each instance in batch in a different way """
+
+    if not torch.is_tensor(shuffle_idx):
+        # get permutation indices
+        shuffle_idx = torch.rand(x.shape[:axis+1], device=x.device).argsort(axis)  
+    
+    idx_expand = shuffle_idx.clone().to(x.device)
+    for _ in range(x.ndim-axis-1):
+        idx_expand.unsqueeze_(-1)
+    # reformat for gather operation
+    idx_expand = idx_expand.repeat(*[1 for _ in range(axis+1)], *(x.shape[axis+1:]))  
+    
+    x = x.gather(axis, idx_expand)
+
+    return x, shuffle_idx
 
 class Evaluator(nn.Module):
     ''' Stores and computes statistiscs of losses and metrics '''

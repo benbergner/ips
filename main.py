@@ -27,7 +27,7 @@ with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:
     use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks = c['use_patch_enc'], c['enc_type'], c['pretrained'], c['n_chan_in'], c['n_res_blocks']
     n_token, N, M, I, patch_size, patch_stride = c['n_token'], c['N'], c['M'], c['I'], c['patch_size'], c['patch_stride']
     use_pos, H, D, D_k, D_v, D_inner, attn_dropout, dropout = c['use_pos'], c['H'], c['D'], c['D_k'], c['D_v'], c['D_inner'], c['attn_dropout'], c['dropout']
-    task_dict = c['tasks']
+    task_dict, shuffle, shuffle_style = c['tasks'], c['shuffle'], c['shuffle_style']
 
 # define datasets and dataloaders
 train_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=True)
@@ -37,7 +37,7 @@ test_loader = torch.utils.data.DataLoader(test_data, batch_size=B_seq, shuffle=F
 
 # define network
 net = IPSNet(dset, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks, use_pos,
-    task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device
+    task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device, shuffle, shuffle_style
 ).to(device)
 
 loss_nll = nn.NLLLoss()

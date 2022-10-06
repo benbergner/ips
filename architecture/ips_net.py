@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 from torchvision.models import resnet18, resnet50
 
+from utils.utils import shuffle_batch, shuffle_instance
 from architecture.transformer import Transformer, pos_enc_1d
 
 class IPSNet(nn.Module):
@@ -69,11 +70,12 @@ class IPSNet(nn.Module):
                 torch_act_fn
             ])
             output_layers[task['name']] = nn.Sequential(*layers)
-            
+
         return output_layers
 
     def __init__(self, dset, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks,
-        use_pos, task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):
+        use_pos, task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device,
+        shuffle, shuffle_style):
         super().__init__()
 
         self.dset = dset
@@ -84,6 +86,8 @@ class IPSNet(nn.Module):
         self.use_pos = use_pos
         self.task_dict = task_dict
         self.device = device
+        self.shuffle = shuffle
+        self.shuffle_style = shuffle_style
 
         if use_patch_enc:
             self.patch_encoder = self.get_patch_enc(enc_type, pretrained, n_chan_in, n_res_blocks)
@@ -96,6 +100,20 @@ class IPSNet(nn.Module):
         
         # define output layer(s)
         self.output_layers = self.get_output_layers(task_dict)
+
+    def do_shuffle(self, patches, pos_enc):
+        """ shuffles patches and pos_enc so that patches that have an equivalent score
+            are sampled uniformly """
+
+        shuffle_style = self.shuffle_style
+        if shuffle_style == 'batch':
+            patches, shuffle_idx = shuffle_batch(patches)
+            pos_enc, _ = shuffle_batch(pos_enc, shuffle_idx)
+        elif shuffle_style == 'instance':
+            patches, shuffle_idx = shuffle_instance(patches, 1)
+            pos_enc, _ = shuffle_instance(pos_enc, 1, shuffle_idx)
+        
+        return patches, pos_enc
 
     def score_and_select(self, emb, emb_pos, M, idx):
         # scores embeddings and selects the top-M embeddings
@@ -118,6 +136,7 @@ class IPSNet(nn.Module):
         I = self.I
         D = self.D  
         device = self.device
+        shuffle = self.shuffle
         use_pos = self.use_pos
         patch_shape = patches.shape
         B, N = patch_shape[:2]
@@ -140,10 +159,14 @@ class IPSNet(nn.Module):
             if self.training:
                 self.patch_encoder.eval()
                 self.transf.eval()
-            
+
             # adjust positional encoding to batch
             if use_pos:
                 pos_enc = self.pos_enc.repeat(B, 1, 1)
+
+            # shuffle patches
+            if shuffle:
+                patches, pos_enc = self.do_shuffle(patches, pos_enc)
 
             # init memory
             init_patch = patches[:,:M].to(device)

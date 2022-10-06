@@ -29,7 +29,7 @@ def adjust_learning_rate(n_epoch_warmup, n_epoch, max_lr, optimizer, dloader, st
 
 def shuffle_batch(x, shuffle_idx=None):
     """ shuffles each instance in batch the same way """
-
+    
     if not torch.is_tensor(shuffle_idx):
         seq_len = x.shape[1]
         shuffle_idx = torch.randperm(seq_len)

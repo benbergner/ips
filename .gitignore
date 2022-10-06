@@ -129,4 +129,7 @@ dmypy.json
 .pyre/
 
 # custom ignores
+logs/
 data/megapixel_mnist/dsets
+data/traffic/dsets
+*.slurm

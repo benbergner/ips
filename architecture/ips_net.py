@@ -60,11 +60,13 @@ class IPSNet(nn.Module):
             
             layers = []
 
+            
             if dset == 'megapixel_mnist':
                 layers.extend([
                     nn.Linear(D, D),
                     nn.ReLU(inplace=True),
                 ])
+            
             layers.extend([
                 nn.Linear(D, n_class),
                 torch_act_fn
@@ -97,6 +99,8 @@ class IPSNet(nn.Module):
 
         if use_pos:
             self.pos_enc = pos_enc_1d(D, N).unsqueeze(0).to(device)
+        else:
+            self.pos_enc = None
         
         # define output layer(s)
         self.output_layers = self.get_output_layers(task_dict)
@@ -108,10 +112,12 @@ class IPSNet(nn.Module):
         shuffle_style = self.shuffle_style
         if shuffle_style == 'batch':
             patches, shuffle_idx = shuffle_batch(patches)
-            pos_enc, _ = shuffle_batch(pos_enc, shuffle_idx)
+            if torch.is_tensor(pos_enc):
+                pos_enc, _ = shuffle_batch(pos_enc, shuffle_idx)
         elif shuffle_style == 'instance':
             patches, shuffle_idx = shuffle_instance(patches, 1)
-            pos_enc, _ = shuffle_instance(pos_enc, 1, shuffle_idx)
+            if torch.is_tensor(pos_enc):
+                pos_enc, _ = shuffle_instance(pos_enc, 1, shuffle_idx)
         
         return patches, pos_enc
 
@@ -138,6 +144,7 @@ class IPSNet(nn.Module):
         device = self.device
         shuffle = self.shuffle
         use_pos = self.use_pos
+        pos_enc = self.pos_enc
         patch_shape = patches.shape
         B, N = patch_shape[:2]
 
@@ -148,7 +155,7 @@ class IPSNet(nn.Module):
         # should patch encoder be used?
         if len(patch_shape) == 3: # B, N, D
             is_image = False
-        elif len(patches.shape) == 5: # B, N, n_chan_in, height, width
+        elif len(patch_shape) == 5: # B, N, n_chan_in, height, width
             is_image = True
         else:
             raise ValueError('The input is neither an image (5 dim) nor a feature vector (3 dim).')
@@ -162,7 +169,7 @@ class IPSNet(nn.Module):
 
             # adjust positional encoding to batch
             if use_pos:
-                pos_enc = self.pos_enc.repeat(B, 1, 1)
+                pos_enc = pos_enc.repeat(B, 1, 1)
 
             # shuffle patches
             if shuffle:
@@ -189,8 +196,6 @@ class IPSNet(nn.Module):
 
                 iter_patch = patches[:, start_idx:end_idx].to(device)
                 iter_idx = idx[:, start_idx:end_idx]
-                if use_pos:
-                    iter_pos_enc = pos_enc[:, start_idx:end_idx]
 
                 # embed patches
                 if is_image:
@@ -227,7 +232,7 @@ class IPSNet(nn.Module):
     
         return mem_patch.to(device), mem_pos
 
-    def forward(self, mem_patch, mem_pos):
+    def forward(self, mem_patch, mem_pos=None):
         patch_shape = mem_patch.shape
         B, M = patch_shape[:2]
 

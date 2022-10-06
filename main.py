@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 
 from utils.utils import adjust_learning_rate, eps, Evaluator
 from data.megapixel_mnist.mnist_dataset import MegapixelMNIST
+from data.traffic.traffic_dataset import TrafficSigns
 from architecture.ips_net import IPSNet
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -32,8 +33,13 @@ with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:
     task_dict, shuffle, shuffle_style = c['tasks'], c['shuffle'], c['shuffle_style']
 
 # define datasets and dataloaders
-train_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=True)
-test_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=False)
+if dataset == 'mnist':
+    train_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=True)
+    test_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=False)
+elif dataset == 'traffic':
+    train_data = TrafficSigns(data_dir, patch_size, patch_stride, task_dict, train=True)
+    test_data = TrafficSigns(data_dir, patch_size, patch_stride, task_dict, train=False)
+
 train_loader = torch.utils.data.DataLoader(train_data, batch_size=B_seq, shuffle=True, num_workers=n_worker, pin_memory=True)
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=B_seq, shuffle=False, num_workers=n_worker, pin_memory=True)
 
@@ -60,6 +66,7 @@ for epoch in range(n_epoch):
     net.train()
 
     n_prep, n_prep_batch = 0, 0
+    mem_pos_enc = None
     start_new_batch = True
 
     for data_it, data in enumerate(train_loader, start=epoch * len(train_loader)):
@@ -157,6 +164,7 @@ for epoch in range(n_epoch):
 
     # Evaluation
     n_prep, n_prep_batch = 0, 0
+    mem_pos_enc = None
     start_new_batch = True
 
     net.eval()

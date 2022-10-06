@@ -279,7 +279,7 @@ class TrafficSigns(Dataset):
         self._data = self._filter(STS(directory, train, seed))
         
         transform_list = [
-            transforms.Resize((*self.IMG_SIZE))
+            transforms.Resize([*self.IMG_SIZE])
         ]
 
         if train:
@@ -345,9 +345,6 @@ class TrafficSigns(Dataset):
         ).unfold(
             2, patch_size[1], patch_stride[1]
         ).permute(1, 2, 0, 3, 4)
-
-        _, _, c, h, w = patches.shape
-        patches = patches.reshape(-1, c, h, w)
 
         patches = patches.reshape(-1, *patches.shape[2:])
 

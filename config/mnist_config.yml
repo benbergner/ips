@@ -8,6 +8,7 @@ lr: 0.001             # learning rate
 wd: 0.1               # weight decay
 
 #dset
+dset: megapixel_mnist                                         # dataset name
 n_class: 10                                                   # number of classes
 data_dir: 'data/megapixel_mnist/dsets/megapixel_mnist_1500'   # directory of dataset
 n_worker: 4                                                   # number of workers

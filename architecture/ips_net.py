@@ -48,6 +48,7 @@ class IPSNet(nn.Module):
 
         D = self.D
         n_class = self.n_class
+        dset = self.dset
 
         output_layers = nn.ModuleDict()
         for task in task_dict.values():
@@ -56,18 +57,26 @@ class IPSNet(nn.Module):
             elif task['act_fn'] == 'sigmoid':
                 torch_act_fn = nn.Sigmoid()
             
-            output_layers[task['name']] = nn.Sequential(
-                nn.Linear(D, D),
-                nn.ReLU(inplace=True),
+            layers = []
+
+            if dset == 'megapixel_mnist':
+                layers.extend([
+                    nn.Linear(D, D),
+                    nn.ReLU(inplace=True),
+                ])
+            layers.extend([
                 nn.Linear(D, n_class),
                 torch_act_fn
-            )
+            ])
+            output_layers[task['name']] = nn.Sequential(*layers)
+            
         return output_layers
 
-    def __init__(self, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks,
+    def __init__(self, dset, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks,
         use_pos, task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device):
         super().__init__()
 
+        self.dset = dset
         self.n_class = n_class
         self.M = M
         self.I = I

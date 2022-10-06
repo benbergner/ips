@@ -23,7 +23,7 @@ with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:
     c = yaml.load(ymlfile, Loader=yaml.FullLoader)
 
     n_epoch, n_epoch_warmup, B, B_seq, lr, wd = c['n_epoch'], c['n_epoch_warmup'], c['B'], c['B_seq'], c['lr'], c['wd']
-    n_class, data_dir, n_worker = c['n_class'], c['data_dir'], c['n_worker']
+    dset, n_class, data_dir, n_worker = c['dset'], c['n_class'], c['data_dir'], c['n_worker']
     use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks = c['use_patch_enc'], c['enc_type'], c['pretrained'], c['n_chan_in'], c['n_res_blocks']
     n_token, N, M, I, patch_size, patch_stride = c['n_token'], c['N'], c['M'], c['I'], c['patch_size'], c['patch_stride']
     use_pos, H, D, D_k, D_v, D_inner, attn_dropout, dropout = c['use_pos'], c['H'], c['D'], c['D_k'], c['D_v'], c['D_inner'], c['attn_dropout'], c['dropout']
@@ -36,8 +36,8 @@ train_loader = torch.utils.data.DataLoader(train_data, batch_size=B_seq, shuffle
 test_loader = torch.utils.data.DataLoader(test_data, batch_size=B_seq, shuffle=False, num_workers=n_worker, pin_memory=True)
 
 # define network
-net = IPSNet(n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks, use_pos, task_dict,
-    n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device
+net = IPSNet(dset, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks, use_pos,
+    task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device
 ).to(device)
 
 loss_nll = nn.NLLLoss()

@@ -3,6 +3,7 @@
 import os
 import sys
 import yaml
+from pprint import pprint
 
 import numpy as np
 import torch
@@ -21,6 +22,7 @@ dataset = 'mnist' # either one of {'mnist', 'camelyon', 'traffic'}
 # get config
 with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:
     c = yaml.load(ymlfile, Loader=yaml.FullLoader)
+    print("Used config:"); pprint(c);
 
     n_epoch, n_epoch_warmup, B, B_seq, lr, wd = c['n_epoch'], c['n_epoch_warmup'], c['B'], c['B_seq'], c['lr'], c['wd']
     dset, n_class, data_dir, n_worker = c['dset'], c['n_class'], c['data_dir'], c['n_worker']

@@ -147,7 +147,7 @@ class MegapixelMNIST:
     
     def _get_top_targets(self):
         # get digit that is topmost in the image
-        pos_height = self._pos[:,:,0] # pos: N, digits, hw
+        pos_height = self._pos[:,:,0] # pos: n_img, digits, height and width
 
         top_pos_idx = np.argmin(pos_height, axis=-1)
 

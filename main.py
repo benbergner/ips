@@ -57,11 +57,10 @@ for epoch in range(n_epoch):
     # Training
     net.train()
 
-    n_prep, n_prep_total = 0, 0
+    n_prep, n_prep_batch = 0, 0
     start_new_batch = True
 
     for data_it, data in enumerate(train_loader, start=epoch * len(train_loader)):
-        #patches_iter, labels_iter, max_labels_iter, top_labels_iter, multi_labels_iter = data[0].to(device), data[1].to(device), data[2].to(device), data[3].to(device), data[4].to(device).float()
         image_patches = data['input'].to(device)
 
         if start_new_batch:
@@ -90,10 +89,10 @@ for epoch in range(n_epoch):
             labels[task['name']][n_prep:n_prep+n_seq] = data[task['name']]
         
         n_prep += n_seq
-        n_prep_total += n_seq
+        n_prep_batch += 1
 
         batch_full = (n_prep == B)
-        is_last_batch = n_prep_total == len(train_loader)
+        is_last_batch = n_prep_batch == len(train_loader)
 
         if batch_full or is_last_batch:
             if not batch_full:
@@ -113,23 +112,27 @@ for epoch in range(n_epoch):
             loss = 0
             task_losses, task_preds, task_labels = {}, {}, {}
             for task in task_dict.values():
-                t = task['name']
+                t, t_act, t_multi = task['name'], task['act_fn'], task['multi_label']
 
                 loss_fn = loss_fns[t]
                 label = labels[t]
                 pred = preds[t]
 
-                if task['act_fn'] == 'softmax':
-                    pred = torch.log(pred + eps)
+                if t_act == 'softmax':
+                    pred_loss = torch.log(pred + eps)
+                else:
+                    pred_loss = pred
 
-                if task['multi_label']:
-                    pred = pred.view(-1)
-                    label = label.view(-1)
+                if t_multi:
+                    pred_loss = pred_loss.view(-1)
+                    label_loss = label.view(-1)
+                else:
+                    label_loss = label
 
-                task_preds[t] = pred.cpu().numpy()
-                task_labels[t] = label.cpu().numpy()
-                task_loss = loss_fn(pred, label)
+                task_loss = loss_fn(pred_loss, label_loss)
                 task_losses[t] = task_loss.item()
+                task_preds[t] = pred.detach().cpu().numpy()
+                task_labels[t] = label.detach().cpu().numpy()
 
                 loss += task_loss
                 
@@ -144,10 +147,11 @@ for epoch in range(n_epoch):
             start_new_batch = True
     
     train_evaluator.compute_metric()
-    train_evaluator.print_stats(epoch)
+    train_evaluator.print_stats(epoch, train=True)
+    print("lr: ", optimizer.param_groups[0]['lr'])
 
     # Evaluation
-    n_prep, n_prep_total = 0, 0
+    n_prep, n_prep_batch = 0, 0
     start_new_batch = True
 
     net.eval()
@@ -180,10 +184,10 @@ for epoch in range(n_epoch):
                 labels[task['name']][n_prep:n_prep+n_seq] = data[task['name']]
             
             n_prep += n_seq
-            n_prep_total += n_seq
+            n_prep_batch += 1
 
             batch_full = (n_prep == B)
-            is_last_batch = n_prep_total == len(test_loader)
+            is_last_batch = n_prep_batch == len(test_loader)
 
             if batch_full or is_last_batch:
                 if not batch_full:
@@ -199,30 +203,36 @@ for epoch in range(n_epoch):
                 loss = 0
                 task_losses, task_preds, task_labels = {}, {}, {}
                 for task in task_dict.values():
-                    t = task['name']
+                    t, t_act, t_multi = task['name'], task['act_fn'], task['multi_label']
 
                     loss_fn = loss_fns[t]
                     label = labels[t]
                     pred = preds[t]
 
-                    if task['act_fn'] == 'softmax':
-                        pred = torch.log(pred + eps)
+                    if t_act == 'softmax':
+                        pred_loss = torch.log(pred + eps)
+                    else:
+                        pred_loss = pred
 
-                    if task['multi_label']:
-                        pred = pred.view(-1)
-                        label = label.view(-1)
-                    
-                    task_preds[t] = pred.cpu().numpy()
-                    task_labels[t] = label.cpu().numpy()
-                    task_loss = loss_fn(pred, label)
+                    if t_multi:
+                        pred_loss = pred_loss.view(-1)
+                        label_loss = label.view(-1)
+                    else:
+                        label_loss = label
+
+                    task_loss = loss_fn(pred_loss, label_loss)
                     task_losses[t] = task_loss.item()
+                    task_preds[t] = pred.detach().cpu().numpy()
+                    task_labels[t] = label.detach().cpu().numpy()
 
                     loss += task_loss
 
                 loss /= len(task_dict.values())
 
+                test_evaluator.update(task_losses, task_preds, task_labels)
+
                 n_prep = 0
                 start_new_batch = True
     
     test_evaluator.compute_metric()
-    test_evaluator.print_stats(epoch)
+    test_evaluator.print_stats(epoch, train=False)

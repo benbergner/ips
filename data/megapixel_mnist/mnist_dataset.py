@@ -3,6 +3,9 @@ import json
 import numpy as np
 import torch
 
+from matplotlib import pyplot as plt
+import sys
+
 class MegapixelMNIST(torch.utils.data.Dataset):
     """ Loads the Megapixel MNIST dataset """
 
@@ -47,10 +50,9 @@ class MegapixelMNIST(torch.utils.data.Dataset):
         patches = img.unfold(
             1, patch_size[0], patch_stride[0]
         ).unfold(
-            2, patch_size[1], patch_stride[0]
+            2, patch_size[1], patch_stride[1]
         ).permute(1, 2, 0, 3, 4)
         
-        #_, _, c, h, w = patches.shape
         patches = patches.reshape(-1, *patches.shape[2:])
 
         data_dict = {'input': patches}

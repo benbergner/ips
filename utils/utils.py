@@ -1,3 +1,4 @@
+import sys
 import math
 import numpy as np
 from sklearn.metrics import accuracy_score
@@ -38,21 +39,18 @@ class Evaluator(nn.Module):
         self.y_trues = defaultdict(list)
         self.metrics = defaultdict(list)
 
-        """
-        for task in task_dict.values():
-            t = task['name']
-            self.losses_it[t] = []
-            self.losses_epoch[t] = []
-            self.y_preds[t] = []
-            self.y_trues[t] = []
-            self.metrics[t] = []
-        """
     def update(self, next_loss, next_y_pred, next_y_true):
 
         for task in self.task_dict.values():
-            t = task['name']
-            self.losses[t].append(next_loss[t])
-            self.y_preds[t].extend(next_y_pred[t])
+            t, t_metr = task['name'], task['metric']
+            self.losses_it[t].append(next_loss[t])
+            
+            if t_metr == 'accuracy':
+                y_pred = np.argmax(next_y_pred[t], axis=-1)
+            elif t_metr == 'multilabel_accuracy':
+                y_pred = next_y_pred[t]
+            self.y_preds[t].extend(y_pred)
+            
             self.y_trues[t].extend(next_y_true[t])
 
     def compute_metric(self):
@@ -66,6 +64,15 @@ class Evaluator(nn.Module):
             if current_metric == 'accuracy':
                 metric = accuracy_score(self.y_trues[t], self.y_preds[t])
                 self.metrics[t].append(metric)
+            elif current_metric == 'multilabel_accuracy':
+                y_pred = np.array(self.y_preds[t])
+                y_true = np.array(self.y_trues[t])
+                
+                y_pred = np.where(y_pred >= 0.5, 1., 0.)
+                correct = np.all(y_pred == y_true, axis=-1).sum()
+                total = y_pred.shape[0]
+                
+                self.metrics[t].append(correct / total)
             
             # reset per iteration losses, preds and labels
             self.losses_it[t] = []
@@ -73,11 +80,15 @@ class Evaluator(nn.Module):
             self.y_trues[t] = []
 
 
-    def print_stats(self, epoch):
-        print_str =  "Train Epoch: {} \n".format(epoch+1)
+    def print_stats(self, epoch, train):
+
+        print_str = 'Train' if train else 'Test'
+        print_str +=  " Epoch: {} \n".format(epoch+1)
         for task in self.task_dict.values():
             t = task['name']
             metric_name = task['metric']
             mean_loss, std_loss = self.losses_epoch[t][epoch]
             metric = self.metrics[t][epoch]
             print_str += "task: {}, mean loss: {}, std loss: {}, {}: {}\n".format(t, mean_loss, std_loss, metric_name, metric)
+        
+        print(print_str)

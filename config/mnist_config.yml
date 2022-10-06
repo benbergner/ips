@@ -8,9 +8,9 @@ lr: 0.001             # learning rate
 wd: 0.1               # weight decay
 
 #dset
-n_class: 10                                                       # number of classes
+n_class: 10                                                   # number of classes
 data_dir: 'data/megapixel_mnist/dsets/megapixel_mnist_1500'   # directory of dataset
-n_worker: 4                                                       # number of workers
+n_worker: 4                                                   # number of workers
 
 #enc
 use_patch_enc: True     # should a patch encoder be used?
@@ -22,7 +22,7 @@ n_res_blocks: 2         # number of residual ResNet blocks
 #ips
 n_token: 4              # Number of learnable query tokens
 N: 900                  # Number of total patches, needs to be consistent with patch size/stride
-M: 5                    # memory size
+M: 100                  # memory size
 I: 100                  # iteration size
 patch_size: [50, 50]    # dims of patch
 patch_stride: [50, 50]  # stride of patch, use 25 per side for 50% overlap

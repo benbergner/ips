@@ -57,6 +57,8 @@ class IPSNet(nn.Module):
                 torch_act_fn = nn.Sigmoid()
             
             output_layers[task['name']] = nn.Sequential(
+                nn.Linear(D, D),
+                nn.ReLU(inplace=True),
                 nn.Linear(D, n_class),
                 torch_act_fn
             )
@@ -95,9 +97,10 @@ class IPSNet(nn.Module):
         attn = self.transf.get_scores(emb_to_score)
 
         top_idx = torch.topk(attn, M, dim = -1)[1]
+        
         mem_emb = torch.gather(emb, 1, top_idx.unsqueeze(-1).repeat(1,1,D))
+        mem_idx = torch.gather(idx, 1, top_idx)
 
-        mem_idx = torch.gather(idx, 1, top_idx.view(B, -1))
         return mem_emb, mem_idx
 
     def ips(self, patches):
@@ -110,7 +113,7 @@ class IPSNet(nn.Module):
         patch_shape = patches.shape
         B, N = patch_shape[:2]
 
-        # IPS required?
+        # check if IPS required
         if M >= N:
             return patches.to(device)      
 
@@ -168,13 +171,12 @@ class IPSNet(nn.Module):
                 all_emb = torch.cat((mem_emb, iter_emb), dim=1)
                 all_idx = torch.cat((mem_idx, iter_idx), dim=1)
                 if use_pos:
-                    all_emb_pos = iter_emb + iter_pos_enc
+                    all_pos_enc = torch.gather(pos_enc, 1, all_idx.view(B, -1, 1).repeat(1, 1, D))#.to(device)
+                    all_emb_pos = all_emb + all_pos_enc
                 else:
                     all_emb_pos = None
 
                 mem_emb, mem_idx = self.score_and_select(all_emb, all_emb_pos, M, all_idx)
-
-            print("mem_idx: ", mem_idx.shape)
 
             # select patches
             n_dim_expand = len(patch_shape) - 2
@@ -205,18 +207,20 @@ class IPSNet(nn.Module):
             raise ValueError('The input is neither an image (5 dim) nor a feature vector (3 dim).')
         
         if is_image:
-            mem_emb = self.patch_encoder(mem_patch.reshape(-1, *patch_shape.shape[2:]))
+            mem_emb = self.patch_encoder(mem_patch.reshape(-1, *patch_shape[2:]))
             mem_emb = mem_emb.view(B, M, -1)        
 
         if torch.is_tensor(mem_pos):
             mem_emb = mem_emb + mem_pos
 
-        image_emb = self.transf(mem_emb, return_attns=False)
+        image_emb = self.transf(mem_emb)
 
         preds = {}
         for task in self.task_dict.values():
-            layer = self.output_layers[task['name']]
-            emb = image_emb[:,task['id']]
-            preds[task['name']] = layer(emb)            
+            t, t_id = task['name'], task['id']
+            layer = self.output_layers[t]
+
+            emb = image_emb[:,t_id]
+            preds[t] = layer(emb)            
 
         return preds

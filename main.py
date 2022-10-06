@@ -145,10 +145,13 @@ for epoch in range(n_epoch):
 
             n_prep = 0
             start_new_batch = True
-    
+
     train_evaluator.compute_metric()
-    train_evaluator.print_stats(epoch, train=True)
-    print("lr: ", optimizer.param_groups[0]['lr'])
+
+    more_to_print = {
+        'lr': optimizer.param_groups[0]['lr']
+    }
+    train_evaluator.print_stats(epoch, train=True, **more_to_print)
 
     # Evaluation
     n_prep, n_prep_batch = 0, 0

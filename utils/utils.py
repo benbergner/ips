@@ -108,15 +108,26 @@ class Evaluator(nn.Module):
             self.y_trues[t] = []
 
 
-    def print_stats(self, epoch, train):
+    def print_stats(self, epoch, train, **kwargs):
 
         print_str = 'Train' if train else 'Test'
         print_str +=  " Epoch: {} \n".format(epoch+1)
+
+        avg_loss = 0
         for task in self.task_dict.values():
             t = task['name']
             metric_name = task['metric']
             mean_loss, std_loss = self.losses_epoch[t][epoch]
             metric = self.metrics[t][epoch]
+           
+            avg_loss += mean_loss
+ 
             print_str += "task: {}, mean loss: {}, std loss: {}, {}: {}\n".format(t, mean_loss, std_loss, metric_name, metric)
-        
+
+        avg_loss /= len(self.task_dict.values())
+        print_str += "avg_loss: {}\n".format(avg_loss)
+
+        for k, v in kwargs.items():
+            print_str += "{}: {}\n".format(k, v)
+
         print(print_str)

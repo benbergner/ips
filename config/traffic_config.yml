@@ -8,7 +8,6 @@ lr: 0.0003            # learning rate
 wd: 0.1               # weight decay
 
 #dset
-dset: traffic                     # dataset name
 n_class: 4                        # number of classes
 data_dir: 'data/traffic/dsets'    # directory of dataset
 n_worker: 8                       # number of workers

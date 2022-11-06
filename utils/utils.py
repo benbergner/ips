@@ -10,6 +10,10 @@ from torch import nn
 #constants
 eps = 1e-6
 
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+
 def adjust_learning_rate(n_epoch_warmup, n_epoch, max_lr, optimizer, dloader, step):
     """ adjust learning rate according to cosine schedule """
 
@@ -54,7 +58,7 @@ def shuffle_instance(x, axis, shuffle_idx=None):
 
     return x, shuffle_idx
 
-class Evaluator(nn.Module):
+class Logger(nn.Module):
     ''' Stores and computes statistiscs of losses and metrics '''
 
     def __init__(self, task_dict):
@@ -86,7 +90,7 @@ class Evaluator(nn.Module):
         for task in self.task_dict.values():
             t = task['name']
             losses = self.losses_it[t]
-            self.losses_epoch[t].append((np.mean(losses), np.std(losses)))
+            self.losses_epoch[t].append(np.mean(losses))
 
             current_metric = task['metric']
             if current_metric == 'accuracy':
@@ -117,12 +121,12 @@ class Evaluator(nn.Module):
         for task in self.task_dict.values():
             t = task['name']
             metric_name = task['metric']
-            mean_loss, std_loss = self.losses_epoch[t][epoch]
+            mean_loss = self.losses_epoch[t][epoch]
             metric = self.metrics[t][epoch]
            
             avg_loss += mean_loss
  
-            print_str += "task: {}, mean loss: {}, std loss: {}, {}: {}\n".format(t, mean_loss, std_loss, metric_name, metric)
+            print_str += "task: {}, mean loss: {:.5f}, {}: {:.5f}\n".format(t, mean_loss, metric_name, metric)
 
         avg_loss /= len(self.task_dict.values())
         print_str += "avg_loss: {}\n".format(avg_loss)

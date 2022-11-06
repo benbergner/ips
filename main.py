@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import os
-import sys
 import yaml
 from pprint import pprint
 
@@ -10,10 +9,11 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from utils.utils import adjust_learning_rate, eps, Evaluator
+from utils.utils import Logger, Struct
 from data.megapixel_mnist.mnist_dataset import MegapixelMNIST
-from data.traffic.traffic_dataset import TrafficSigns
+#from data.traffic.traffic_dataset import TrafficSigns
 from architecture.ips_net import IPSNet
+from training.iterative import train_one_epoch, evaluate
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -24,228 +24,48 @@ dataset = 'mnist' # either one of {'mnist', 'camelyon', 'traffic'}
 with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:
     c = yaml.load(ymlfile, Loader=yaml.FullLoader)
     print("Used config:"); pprint(c);
+    conf = Struct(**c)
 
-    n_epoch, n_epoch_warmup, B, B_seq, lr, wd = c['n_epoch'], c['n_epoch_warmup'], c['B'], c['B_seq'], c['lr'], c['wd']
-    dset, n_class, data_dir, n_worker = c['dset'], c['n_class'], c['data_dir'], c['n_worker']
-    use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks = c['use_patch_enc'], c['enc_type'], c['pretrained'], c['n_chan_in'], c['n_res_blocks']
-    n_token, N, M, I, patch_size, patch_stride = c['n_token'], c['N'], c['M'], c['I'], c['patch_size'], c['patch_stride']
-    use_pos, H, D, D_k, D_v, D_inner, attn_dropout, dropout = c['use_pos'], c['H'], c['D'], c['D_k'], c['D_v'], c['D_inner'], c['attn_dropout'], c['dropout']
-    task_dict, shuffle, shuffle_style = c['tasks'], c['shuffle'], c['shuffle_style']
+# fix the seed for reproducibility
+torch.manual_seed(conf.seed)
+np.random.seed(conf.seed)
 
 # define datasets and dataloaders
 if dataset == 'mnist':
-    train_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=True)
-    test_data = MegapixelMNIST(data_dir, patch_size, patch_stride, task_dict, train=False)
+    train_data = MegapixelMNIST(conf, train=True)
+    test_data = MegapixelMNIST(conf, train=False)
 elif dataset == 'traffic':
-    train_data = TrafficSigns(data_dir, patch_size, patch_stride, task_dict, train=True)
-    test_data = TrafficSigns(data_dir, patch_size, patch_stride, task_dict, train=False)
+    train_data = TrafficSigns(conf, train=True)
+    test_data = TrafficSigns(conf, train=False)
 
-train_loader = torch.utils.data.DataLoader(train_data, batch_size=B_seq, shuffle=True, num_workers=n_worker, pin_memory=True)
-test_loader = torch.utils.data.DataLoader(test_data, batch_size=B_seq, shuffle=False, num_workers=n_worker, pin_memory=True)
+train_loader = DataLoader(train_data, batch_size=conf.B_seq, shuffle=True, num_workers=conf.n_worker, pin_memory=True)
+test_loader = DataLoader(test_data, batch_size=conf.B_seq, shuffle=False, num_workers=conf.n_worker, pin_memory=True)
 
 # define network
-net = IPSNet(dset, n_class, use_patch_enc, enc_type, pretrained, n_chan_in, n_res_blocks, use_pos,
-    task_dict, n_token, N, M, I, D, H, D_k, D_v, D_inner, dropout, attn_dropout, device, shuffle, shuffle_style
-).to(device)
+net = IPSNet(device, conf).to(device)
 
 loss_nll = nn.NLLLoss()
 loss_bce = nn.BCELoss()
 
-optimizer = torch.optim.AdamW(net.parameters(), lr=0, weight_decay=wd)
+optimizer = torch.optim.AdamW(net.parameters(), lr=0, weight_decay=conf.wd)
 
-loss_fns = {}
-for task in task_dict.values():
-    loss_fns[task['name']] = loss_nll if task['act_fn'] == 'softmax' else loss_bce
+criterions = {}
+for task in conf.tasks.values():
+    criterions[task['name']] = loss_nll if task['act_fn'] == 'softmax' else loss_bce
 
-train_evaluator = Evaluator(task_dict)
-test_evaluator = Evaluator(task_dict)
+log_writer_train = Logger(conf.tasks)
+log_writer_test = Logger(conf.tasks)
 
-for epoch in range(n_epoch):
+for epoch in range(conf.n_epoch):
     
-    # Training
-    net.train()
+    train_one_epoch(net, criterions, train_loader, optimizer, device, epoch, log_writer_train, conf)
 
-    n_prep, n_prep_batch = 0, 0
-    mem_pos_enc = None
-    start_new_batch = True
+    log_writer_train.compute_metric()
 
-    for data_it, data in enumerate(train_loader, start=epoch * len(train_loader)):
-        image_patches = data['input'].to(device)
+    more_to_print = {'lr': optimizer.param_groups[0]['lr']}
+    log_writer_train.print_stats(epoch, train=True, **more_to_print)
 
-        if start_new_batch:
-            mem_patch = torch.zeros((B, M, n_chan_in, *patch_size)).to(device)
-            if use_pos:
-                mem_pos_enc = torch.zeros((B, M, D)).to(device)
-
-            labels = {}
-            for task in task_dict.values():
-                if task['multi_label']:
-                    labels[task['name']] = torch.zeros((B, n_class), dtype=torch.float32).to(device)
-                else:
-                    labels[task['name']] = torch.zeros((B,), dtype=torch.int64).to(device)
-            
-            start_new_batch = False
-        
-        mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
-        
-        # fill batch
-        n_seq, len_seq = mem_patch_iter.shape[:2]
-        mem_patch[n_prep:n_prep+n_seq, :len_seq] = mem_patch_iter
-        if use_pos:
-            mem_pos_enc[n_prep:n_prep+n_seq, :len_seq] = mem_pos_enc_iter
-        
-        for task in task_dict.values():
-            labels[task['name']][n_prep:n_prep+n_seq] = data[task['name']]
-        
-        n_prep += n_seq
-        n_prep_batch += 1
-
-        batch_full = (n_prep == B)
-        is_last_batch = n_prep_batch == len(train_loader)
-
-        if batch_full or is_last_batch:
-            if not batch_full:
-                # shrink batch
-                mem_patch = mem_patch[:n_prep]
-                if use_pos:
-                    mem_pos_enc = mem_pos_enc[:n_prep]
-                
-                for task in task_dict.values():
-                    labels[task['name']] = labels[task['name']][:n_prep]
-            
-            adjust_learning_rate(n_epoch_warmup, n_epoch, lr, optimizer, train_loader, data_it+1)
-            optimizer.zero_grad()
-
-            preds = net(mem_patch, mem_pos_enc)
-
-            loss = 0
-            task_losses, task_preds, task_labels = {}, {}, {}
-            for task in task_dict.values():
-                t, t_act, t_multi = task['name'], task['act_fn'], task['multi_label']
-
-                loss_fn = loss_fns[t]
-                label = labels[t]
-                pred = preds[t]
-
-                if t_act == 'softmax':
-                    pred_loss = torch.log(pred + eps)
-                else:
-                    pred_loss = pred
-
-                if t_multi:
-                    pred_loss = pred_loss.view(-1)
-                    label_loss = label.view(-1)
-                else:
-                    label_loss = label
-
-                task_loss = loss_fn(pred_loss, label_loss)
-                task_losses[t] = task_loss.item()
-                task_preds[t] = pred.detach().cpu().numpy()
-                task_labels[t] = label.detach().cpu().numpy()
-
-                loss += task_loss
-                
-            loss /= len(task_dict.values())
-
-            loss.backward()
-            optimizer.step()
-
-            train_evaluator.update(task_losses, task_preds, task_labels)
-
-            n_prep = 0
-            start_new_batch = True
-
-    train_evaluator.compute_metric()
-
-    more_to_print = {
-        'lr': optimizer.param_groups[0]['lr']
-    }
-    train_evaluator.print_stats(epoch, train=True, **more_to_print)
-
-    # Evaluation
-    n_prep, n_prep_batch = 0, 0
-    mem_pos_enc = None
-    start_new_batch = True
-
-    net.eval()
-    with torch.no_grad():
-        for data in test_loader:
-            image_patches = data['input'].to(device)
-
-            if start_new_batch:
-                mem_patch = torch.zeros((B, M, n_chan_in, *patch_size)).to(device)
-                if use_pos:
-                    mem_pos_enc = torch.zeros((B, M, D)).to(device)
-
-                labels = {}
-                for task in task_dict.values():
-                    if task['multi_label']:
-                        labels[task['name']] = torch.zeros((B, n_class), dtype=torch.float32).to(device)
-                    else:
-                        labels[task['name']] = torch.zeros((B,), dtype=torch.int64).to(device)
-                
-                start_new_batch = False
-            
-            mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
-        
-            n_seq, len_seq = mem_patch_iter.shape[:2]
-            mem_patch[n_prep:n_prep+n_seq, :len_seq] = mem_patch_iter
-            if use_pos:
-                mem_pos_enc[n_prep:n_prep+n_seq, :len_seq] = mem_pos_enc_iter
-            
-            for task in task_dict.values():
-                labels[task['name']][n_prep:n_prep+n_seq] = data[task['name']]
-            
-            n_prep += n_seq
-            n_prep_batch += 1
-
-            batch_full = (n_prep == B)
-            is_last_batch = n_prep_batch == len(test_loader)
-
-            if batch_full or is_last_batch:
-                if not batch_full:
-                    mem_patch = mem_patch[:n_prep]
-                    if use_pos:
-                        mem_pos_enc = mem_pos_enc[:n_prep]
-                    
-                    for task in task_dict.values():
-                        labels[task['name']] = labels[task['name']][:n_prep]
-                
-                preds = net(mem_patch, mem_pos_enc)
-
-                loss = 0
-                task_losses, task_preds, task_labels = {}, {}, {}
-                for task in task_dict.values():
-                    t, t_act, t_multi = task['name'], task['act_fn'], task['multi_label']
-
-                    loss_fn = loss_fns[t]
-                    label = labels[t]
-                    pred = preds[t]
-
-                    if t_act == 'softmax':
-                        pred_loss = torch.log(pred + eps)
-                    else:
-                        pred_loss = pred
-
-                    if t_multi:
-                        pred_loss = pred_loss.view(-1)
-                        label_loss = label.view(-1)
-                    else:
-                        label_loss = label
-
-                    task_loss = loss_fn(pred_loss, label_loss)
-                    task_losses[t] = task_loss.item()
-                    task_preds[t] = pred.detach().cpu().numpy()
-                    task_labels[t] = label.detach().cpu().numpy()
-
-                    loss += task_loss
-
-                loss /= len(task_dict.values())
-
-                test_evaluator.update(task_losses, task_preds, task_labels)
-
-                n_prep = 0
-                start_new_batch = True
+    evaluate(net, criterions, test_loader, device, epoch, log_writer_test, conf)
     
-    test_evaluator.compute_metric()
-    test_evaluator.print_stats(epoch, train=False)
+    log_writer_test.compute_metric()
+    log_writer_test.print_stats(epoch, train=False)

@@ -3,26 +3,23 @@ import json
 import numpy as np
 import torch
 
-from matplotlib import pyplot as plt
-import sys
-
 class MegapixelMNIST(torch.utils.data.Dataset):
     """ Loads the Megapixel MNIST dataset """
 
-    def __init__(self, data_dir, patch_size, patch_stride, task_dict, train=True):
-        with open(os.path.join(data_dir, "parameters.json")) as f:
+    def __init__(self, conf, train=True):
+        with open(os.path.join(conf.data_dir, "parameters.json")) as f:
             self.parameters = json.load(f)
 
-        self.patch_size = patch_size
-        self.patch_stride = patch_stride
-        self.task_dict = task_dict
+        self.patch_size = conf.patch_size
+        self.patch_stride = conf.patch_stride
+        self.tasks = conf.tasks
 
         filename = "train.npy" if train else "test.npy"
         W = self.parameters["width"]
         H = self.parameters["height"]
 
         self._img_shape = (H, W, 1)
-        self._data = np.load(os.path.join(data_dir, filename), allow_pickle=True)
+        self._data = np.load(os.path.join(conf.data_dir, filename), allow_pickle=True)
 
     def __len__(self):
         return len(self._data)
@@ -56,7 +53,7 @@ class MegapixelMNIST(torch.utils.data.Dataset):
         patches = patches.reshape(-1, *patches.shape[2:])
 
         data_dict = {'input': patches}
-        for task in self.task_dict.values():
+        for task in self.tasks.values():
             data_dict[task['name']] = data[task['name']] 
 
         return data_dict

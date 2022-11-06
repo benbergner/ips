@@ -1,4 +1,5 @@
-import sys
+# Adapted from https://github.com/idiap/attention-sampling
+
 from os import path
 import argparse
 import json

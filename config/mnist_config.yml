@@ -3,15 +3,21 @@ n_epoch: 150          # number of epochs
 B: 16                 # batch size
 B_seq: 16             # sequential batch size, set either to
                       # 1 (eager sequential loading) or B (eager or lazy loading)
-n_epoch_warmup: 10   # number of warm-up epochs
+n_epoch_warmup: 10    # number of warm-up epochs
 lr: 0.001             # learning rate
 wd: 0.1               # weight decay
 
 #dset
-dset: megapixel_mnist                                         # dataset name
 n_class: 10                                                   # number of classes
 data_dir: 'data/megapixel_mnist/dsets/megapixel_mnist_1500'   # directory of dataset
-n_worker: 4                                                   # number of workers
+n_worker: 8                                                   # number of workers
+eager: True                                                   # eager or lazy loading
+
+#misc
+eps: 0.000001
+seed: 0
+track_efficiency: False
+track_epoch: 0
 
 #enc
 use_patch_enc: True     # should a patch encoder be used?
@@ -23,9 +29,9 @@ n_res_blocks: 2         # number of residual ResNet blocks
 #ips
 shuffle: True               # should patches be shuffled?
 shuffle_style: 'batch'      # shuffle each instance the same way? 'batch' or 'instance'
-n_token: 4                  # Number of learnable query tokens
-N: 900                      # Number of total patches, needs to be consistent with patch size/stride
-M: 5                        # memory size
+n_token: 4                  # number of learnable query tokens, corresponds to number of tasks
+N: 900                      # number of total patches, needs to be consistent with patch size/stride
+M: 100                      # memory size
 I: 100                      # iteration size
 patch_size: [50, 50]        # dims of patch
 patch_stride: [50, 50]      # stride of patch, use 25 per side for 50% overlap
@@ -36,8 +42,8 @@ H: 8                                      # number of transformer layer heads
 D: 128                                    # dimension of features
 D_k: 16                                   # dimension of query/keys per head
 D_v: 16                                   # dimension of values per head
-D_inner: 512                              # hidden dimension of MLP
-attn_dropout: 0.0                         # attention dropout
+D_inner: 512                              # intermediate layer dimension in MLP
+attn_dropout: 0.1                         # attention dropout
 dropout: 0.1                              # standard dropout
 
 tasks:

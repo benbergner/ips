@@ -10,7 +10,7 @@ wd: 0.1               # weight decay
 #dset
 n_class: 10                                                   # number of classes
 data_dir: 'data/megapixel_mnist/dsets/megapixel_mnist_1500'   # directory of dataset
-n_worker: 8                                                   # number of workers
+n_worker: 16                                                  # number of workers
 eager: True                                                   # eager or lazy loading
 
 #misc

@@ -98,13 +98,13 @@ def train_one_epoch(net, criterions, data_loader, optimizer, device, epoch, log_
 
         # create buffer for selected patches
         if start_new_batch:
+            mem_patch, mem_pos_enc, labels = init_batch(device, conf)
+            start_new_batch = False
+
             if conf.track_efficiency:
                 start_event = torch.cuda.Event(enable_timing=True)
                 end_event = torch.cuda.Event(enable_timing=True)
                 start_event.record()
-
-            mem_patch, mem_pos_enc, labels = init_batch(device, conf)
-            start_new_batch = False
         
         # apply IPS
         mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
@@ -123,7 +123,7 @@ def train_one_epoch(net, criterions, data_loader, optimizer, device, epoch, log_
             if not batch_full:
                 mem_patch, mem_pos_enc, labels = shrink_batch(mem_patch, mem_pos_enc, labels, n_prep, conf)
             
-            adjust_learning_rate(conf.n_epoch_warmup, conf.n_epoch, conf.lr, optimizer, data_loader, data_it+1)
+            #adjust_learning_rate(conf.n_epoch_warmup, conf.n_epoch, conf.lr, optimizer, data_loader, data_it+1)
             optimizer.zero_grad()
 
             loss, task_info = compute_loss(net, mem_patch, mem_pos_enc, criterions, labels, conf)

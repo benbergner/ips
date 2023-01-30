@@ -2,7 +2,7 @@
 n_epoch: 150          # number of epochs
 B: 16                 # batch size
 B_seq: 16             # sequential batch size, set either to
-                      # 1 (eager sequential loading) or B (eager or lazy loading)
+                      # B (eager and lazy loading) or 1 (eager sequential loading)
 n_epoch_warmup: 10    # number of warm-up epochs
 lr: 0.001             # learning rate
 wd: 0.1               # weight decay
@@ -16,20 +16,20 @@ eager: True                                                   # eager or lazy lo
 #misc
 eps: 0.000001
 seed: 0
-track_efficiency: False
-track_epoch: 0
+track_efficiency: False # for training, needs to be False
+track_epoch: 0          # only relevant if efficiency stats are tracked.
 
 #enc
 use_patch_enc: True     # should a patch encoder be used?
 enc_type: 'resnet18'    # used backbone, set either to 'resnet18' or 'resnet50'
 pretrained: False       # should ImageNet weights be used?
 n_chan_in: 1            # number of input channels
-n_res_blocks: 2         # number of residual ResNet blocks
+n_res_blocks: 2         # number of residual ResNet blocks, mnist only uses 2
 
 #ips
 shuffle: True               # should patches be shuffled?
-shuffle_style: 'batch'      # shuffle each instance the same way? 'batch' or 'instance'
-n_token: 4                  # number of learnable query tokens, corresponds to number of tasks
+shuffle_style: 'batch'      # 'batch' or 'instance'. 'batch' shuffles each instance of the batch the same way
+n_token: 4                  # number of learnable query tokens, corresponds to number of tasks (mnist has 4 tasks)
 N: 900                      # number of total patches, needs to be consistent with patch size/stride
 M: 100                      # memory size
 I: 100                      # iteration size
@@ -46,6 +46,7 @@ D_inner: 512                              # intermediate layer dimension in MLP
 attn_dropout: 0.1                         # attention dropout
 dropout: 0.1                              # standard dropout
 
+# define name, activation fn of final layer, whether multi-label, and metric to be used
 tasks:
   task0:
     id: 0

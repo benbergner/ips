@@ -7,9 +7,6 @@ from collections import defaultdict
 import torch
 from torch import nn
 
-#constants
-eps = 1e-6
-
 class Struct:
     def __init__(self, **entries):
         self.__dict__.update(entries)

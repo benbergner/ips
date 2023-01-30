@@ -63,8 +63,10 @@ def compute_loss(net, mem_patch, mem_pos_enc, criterions, labels, conf):
     Obtain predictions, compute losses for each task and get some logging stats
     """
 
+    # Obtain predictions
     preds = net(mem_patch, mem_pos_enc)
 
+    # Compute losses for each task and sum them up
     loss = 0
     task_losses, task_preds, task_labels = {}, {}, {}
     for task in conf.tasks.values():
@@ -92,7 +94,7 @@ def compute_loss(net, mem_patch, mem_pos_enc, criterions, labels, conf):
         task_labels[t_name] = label.detach().cpu().numpy()
 
         loss += task_loss
-        
+    # Average task losses        
     loss /= len(conf.tasks.values())
 
     return loss, [task_losses, task_preds, task_labels]

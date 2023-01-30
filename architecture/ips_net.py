@@ -9,7 +9,10 @@ from utils.utils import shuffle_batch, shuffle_instance
 from architecture.transformer import Transformer, pos_enc_1d
 
 class IPSNet(nn.Module):
-    ''' Net that runs IPS, patch encoder, aggregator, class. head '''
+    """
+    Net that runs all the main components:
+    patch encoder, IPS, patch aggregator and classification head
+    """
 
     def get_patch_enc(self, enc_type, pretrained, n_chan_in, n_res_blocks):
         # get architecture for patch encoder
@@ -45,7 +48,9 @@ class IPSNet(nn.Module):
         return nn.Sequential(*layer_ls)
 
     def get_output_layers(self, tasks):
-        # define output layer for each task
+        """
+        Create an output layer for each task according to task definition
+        """
 
         D = self.D
         n_class = self.n_class
@@ -53,13 +58,13 @@ class IPSNet(nn.Module):
         output_layers = nn.ModuleDict()
         for task in tasks.values():
             if task['act_fn'] == 'softmax':
-                torch_act_fn = nn.Softmax(dim=-1)
+                act_fn = nn.Softmax(dim=-1)
             elif task['act_fn'] == 'sigmoid':
-                torch_act_fn = nn.Sigmoid()
+                act_fn = nn.Sigmoid()
             
             layers = [
                 nn.Linear(D, n_class),
-                torch_act_fn
+                act_fn
             ]
             output_layers[task['name']] = nn.Sequential(*layers)
 
@@ -82,21 +87,24 @@ class IPSNet(nn.Module):
             self.patch_encoder = self.get_patch_enc(conf.enc_type, conf.pretrained,
                 conf.n_chan_in, conf.n_res_blocks)
 
-        # define the multi-head cross-attention transformer
+        # Define the multi-head cross-attention transformer
         self.transf = Transformer(conf.n_token, conf.H, conf.D, conf.D_k, conf.D_v,
             conf.D_inner, conf.attn_dropout, conf.dropout)
 
+        # Optionally use standard 1d sinusoidal positional encoding
         if conf.use_pos:
             self.pos_enc = pos_enc_1d(conf.D, conf.N).unsqueeze(0).to(device)
         else:
             self.pos_enc = None
         
-        # define output layer(s)
+        # Define an output layer for each task
         self.output_layers = self.get_output_layers(conf.tasks)
 
     def do_shuffle(self, patches, pos_enc):
-        """ shuffles patches and pos_enc so that patches that have an equivalent score
-            are sampled uniformly """
+        """
+        Shuffles patches and pos_enc so that patches that have an equivalent score
+        are sampled uniformly
+        """
 
         shuffle_style = self.shuffle_style
         if shuffle_style == 'batch':
@@ -111,15 +119,21 @@ class IPSNet(nn.Module):
         return patches, pos_enc
 
     def score_and_select(self, emb, emb_pos, M, idx):
-        # scores embeddings and selects the top-M embeddings
-        B, D = emb.shape[0], emb.shape[2]
+        """ 
+        Scores embeddings and selects the top-M embeddings
+        """
+        D = emb.shape[2]
 
         emb_to_score = emb_pos if torch.is_tensor(emb_pos) else emb
 
-        attn = self.transf.get_scores(emb_to_score)
+        # Obtain scores from transformer
+        attn = self.transf.get_scores(emb_to_score) # (B, M+I)
 
-        top_idx = torch.topk(attn, M, dim = -1)[1]
+        # Get indixes of top-scoring patches
+        top_idx = torch.topk(attn, M, dim = -1)[1] # (B, M)
         
+        # Update memory buffers
+        # Note: Scoring is based on `emb_to_score`, selection is based on `emb`
         mem_emb = torch.gather(emb, 1, top_idx.unsqueeze(-1).expand(-1,-1,D))
         mem_idx = torch.gather(idx, 1, top_idx)
 
@@ -136,9 +150,10 @@ class IPSNet(nn.Module):
 
             return preds
 
+    # IPS runs in no-gradient mode
     @torch.no_grad()
     def ips(self, patches):
-        # get useful info
+        # Get useful variables
         M = self.M
         I = self.I
         D = self.D  
@@ -149,12 +164,14 @@ class IPSNet(nn.Module):
         patch_shape = patches.shape
         B, N = patch_shape[:2]
 
-        # check if IPS required
+        # Shortcut: IPS not required when memory is larger than total number of patches
         if M >= N:
+            # Batchify pos enc
             pos_enc = pos_enc.expand(B, -1, -1) if use_pos else None
             return patches.to(device), pos_enc 
 
-        # should patch encoder be used?
+        # Only use patch encoder when working with image patches
+        # as opposed to embedding vectors
         if len(patch_shape) == 3: # B, N, D
             is_image = False
         elif len(patch_shape) == 5: # B, N, n_chan_in, height, width
@@ -167,55 +184,60 @@ class IPSNet(nn.Module):
             self.patch_encoder.eval()
             self.transf.eval()
 
-        # adjust positional encoding to batch
+        # Batchify positional encoding
         if use_pos:
             pos_enc = pos_enc.expand(B, -1, -1)
 
-        # shuffle patches
+        # Shuffle patches (i.e., randomize when patches obtain identical scores)
         if shuffle:
             patches, pos_enc = self.do_shuffle(patches, pos_enc)
 
-        # init memory buffer
-        init_patch = patches[:,:M].to(device)
+        # Init memory buffer
+        # Put patches onto GPU in case it is not there yet (lazy loading).
+        # `to` will return self in case patches are located on GPU already (eager loading)
+        init_patch = patches[:,:M].to(device) 
         if is_image:
+            # Apply encoder if patches are used.
             mem_emb = self.patch_encoder(init_patch.reshape(-1, *patch_shape[2:]))
             mem_emb = mem_emb.view(B, M, -1)
         else:
             mem_emb = init_patch
         
-        # init mem idx
+        # Init memory indixes in order to select patches at the end of IPS.
         idx = torch.arange(N, dtype=torch.int64, device=device).unsqueeze(0).expand(B, -1)
         mem_idx = idx[:,:M]
 
-        # get num iterations
+        # Apply IPS for `n_iter` iterations
         n_iter = math.ceil((N - M) / I)
         for i in range(n_iter):
-            # get next patches
+            # Get next patches
             start_idx = i * I + M
             end_idx = min(start_idx + I, N)
 
             iter_patch = patches[:, start_idx:end_idx].to(device)
             iter_idx = idx[:, start_idx:end_idx]
 
-            # embed patches
+            # Embed patches
             if is_image:
                 iter_emb = self.patch_encoder(iter_patch.reshape(-1, *patch_shape[2:]))
                 iter_emb = iter_emb.view(B, -1, D)
             else:
                 iter_emb = iter_patch
             
-            # concatenate with memory buffer
+            # Concatenate with memory buffer
             all_emb = torch.cat((mem_emb, iter_emb), dim=1)
             all_idx = torch.cat((mem_idx, iter_idx), dim=1)
+            # When using positional encoding, also apply it during patch selection
             if use_pos:
                 all_pos_enc = torch.gather(pos_enc, 1, all_idx.view(B, -1, 1).expand(-1, -1, D))
                 all_emb_pos = all_emb + all_pos_enc
             else:
                 all_emb_pos = None
 
+            # Select Top-M patches according to cross-attention scores
             mem_emb, mem_idx = self.score_and_select(all_emb, all_emb_pos, M, all_idx)
 
-        # select patches
+        # Select patches
         n_dim_expand = len(patch_shape) - 2
         mem_patch = torch.gather(patches, 1, 
             mem_idx.view(B, -1, *(1,)*n_dim_expand).expand(-1, -1, *patch_shape[2:]).to(patches.device)
@@ -226,14 +248,22 @@ class IPSNet(nn.Module):
         else:
             mem_pos = None
 
-        # set network back to training mode            
+        # Set components back to training mode
+        # Although components of `self` that are relevant for IPS have been set to eval mode,
+        # self is still in training mode at training time, i.e., we can use it here.
         if self.training:
             self.patch_encoder.train()
             self.transf.train()
     
+        # Return selected patch and corresponding positional embeddings
         return mem_patch, mem_pos
 
     def forward(self, mem_patch, mem_pos=None):
+        """
+        After M patches have been selected during IPS, encode and aggregate them.
+        The aggregated embedding is input to a classification head.
+        """
+
         patch_shape = mem_patch.shape
         B, M = patch_shape[:2]
 

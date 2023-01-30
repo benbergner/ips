@@ -143,6 +143,8 @@ class Transformer(nn.Module):
     def get_scores(self, x):
 
         attn = self.crs_attn.get_attn(x)
+        # Average scores over heads and tasks
+        # Average over tasks is only required for multi-task learning (mnist).
         return attn.mean(dim=1).transpose(1, 2).mean(-1)
 
     def forward(self, x):

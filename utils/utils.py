@@ -12,7 +12,9 @@ class Struct:
         self.__dict__.update(entries)
 
 def adjust_learning_rate(n_epoch_warmup, n_epoch, max_lr, optimizer, dloader, step):
-    """ adjust learning rate according to cosine schedule """
+    """
+    Set learning rate according to cosine schedule
+    """
 
     max_steps = int(n_epoch * len(dloader))
     warmup_steps = int(n_epoch_warmup * len(dloader))

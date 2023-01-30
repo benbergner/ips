@@ -47,6 +47,7 @@ net = IPSNet(device, conf).to(device)
 loss_nll = nn.NLLLoss()
 loss_bce = nn.BCELoss()
 
+# define optimizer, lr not important at this point
 optimizer = torch.optim.AdamW(net.parameters(), lr=0, weight_decay=conf.wd)
 
 criterions = {}

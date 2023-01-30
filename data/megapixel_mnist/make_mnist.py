@@ -1,6 +1,6 @@
 # Adapted from https://github.com/idiap/attention-sampling
 
-from os import path
+import os
 import argparse
 import json
 
@@ -8,7 +8,9 @@ import numpy as np
 from keras.datasets import mnist
 
 class MegapixelMNIST:
-    """ Make an artificial large megapixel mnist dataset """
+    """
+    Class to create an artificial megapixel mnist dataset
+    """
 
     class Sample(object):
         def __init__(self, dataset, idxs, positions, noise_positions,
@@ -73,11 +75,13 @@ class MegapixelMNIST:
         finally:
             np.random.set_state(random_state)
 
-        # Should we add noise?
+        # Boolean whether to add noise
         self._should_add_noise = noise
 
     def _create_noise(self, N, W, H, n_noise):
-        # Create some random scribble noise of straight lines
+        """
+        Create some random scribble noise of straight lines
+        """
         angles = np.tan(np.random.rand(n_noise)*np.pi/2.5)
         A = np.zeros((n_noise, 28, 28))
         for i in range(n_noise):
@@ -102,29 +106,69 @@ class MegapixelMNIST:
         return noise, positions, patterns
 
     def _get_numbers(self, N, y):
+        """
+        Method to get numbers from the dataset
+
+        Parameters:
+        N (int): Number of samples (megapixel images) to create
+        y (numpy array): Labels of standard mnist images
+
+        Returns:
+        numpy array: Array of indexes of the selected samples
+        numpy array: Array of targets for the selected samples (task majority)
+        numpy array: Array of digits for the selected samples (task multilabel)
+        numpy array: Array of maximum digits for the selected samples (task max)
+        """
+        # Initialize empty lists for the output arrays
         nums = []
         targets = []
         max_targets = []
         all_digits = []
+        # Get all indexes of the dataset
         all_idxs = np.arange(len(y))
-        for i in range(N):
+        # Loop over the required number of samples
+        for _ in range(N):
+            # Get a random digit
             target = int(np.random.rand()*10)
+            # Get three indexes where the target digit is present
             positive_idxs = np.random.choice(all_idxs[y == target], 3)
+            # Get two negative indexes where the target digit is not present
             neg_idxs = np.random.choice(all_idxs[y != target], 2)
 
+            # Concatenate the positive and negative indexes
             pos_neg_idxs = np.concatenate([positive_idxs, neg_idxs])
+            # Get the digits from the concatenated indexes
             digits = y[pos_neg_idxs]
+            # Get the maximum digit from the digits array
             max_target = np.max(digits)
 
+            # Append the outputs to their respective lists
             nums.append(pos_neg_idxs)
             targets.append(target)
             all_digits.append(digits)
             max_targets.append(max_target)
 
+        # Convert the lists to numpy arrays and return
         return np.array(nums), np.array(targets), np.array(all_digits), np.array(max_targets)
 
     def _get_positions(self, N, W, H):
+        """
+        Generates random positions of 5 digits in an image
+        with size (H, W)
+
+        Arguments:
+            N: number of images to generate positions for
+            W: width of the image
+            H: height of the image
+
+        Returns:
+            np.array with shape (N, 5, 2) containing positions of 5 digits
+        """
         def overlap(positions, pos):
+            """
+            Check if the new position 'pos' overlaps with
+            any of the existing positions in 'positions'
+            """
             if len(positions) == 0:
                 return False
             distances = np.abs(
@@ -134,9 +178,9 @@ class MegapixelMNIST:
             return np.logical_and(axis_overlap[:, 0], axis_overlap[:, 1]).any()
 
         positions = []
-        for i in range(N):
+        for _ in range(N):
             position = []
-            for i in range(5):
+            for _ in range(5):
                 while True:
                     pos = np.round(np.random.rand(2)*[H-28, W-28]).astype(int)
                     if not overlap(position, pos):
@@ -147,11 +191,16 @@ class MegapixelMNIST:
         return np.array(positions)
     
     def _get_top_targets(self):
-        # get digit that is topmost in the image
-        pos_height = self._pos[:,:,0] # pos: n_img, digits, height and width
-
+        """
+        Get digit that is topmost in each image
+        """
+        # `pos` is a numpy array with shape (n_img, digits, height and width)
+        pos_height = self._pos[:,:,0] 
+        
+        # Get the index of the digit with the minimum height, i.e. top-most
         top_pos_idx = np.argmin(pos_height, axis=-1)
-
+        
+        # Get the digit with the minimum height for each image
         N = self._digits.shape[0]
         top_targets = self._digits[np.arange(N), top_pos_idx]
 
@@ -163,6 +212,7 @@ class MegapixelMNIST:
     def __getitem__(self, i):
         if len(self) <= i:
             raise IndexError()
+        # Create a new sample
         sample = self.Sample(
             self,
             self._nums[i],
@@ -171,6 +221,7 @@ class MegapixelMNIST:
             self._noise_patterns[i]
         )
         x = sample.create_img().astype(np.float32) / 255
+        # Obtain labels for all tasks
         y = self._targets[i]
         y_max = self._max_targets[i]
         y_top = self._top_targets[i]
@@ -180,6 +231,9 @@ class MegapixelMNIST:
 
 
 def sparsify(dataset):
+    """
+    Store non-zero values and their indixes only to save memory
+    """
     def to_sparse(x):
         x = x.ravel()
         indices = np.where(x != 0)
@@ -258,7 +312,10 @@ def main(argv):
 
     args = parser.parse_args(argv)
 
-    with open(path.join(args.output_directory, "parameters.json"), "w") as f:
+    if not os.path.exists(args.output_directory):
+        os.makedirs(args.output_directory)
+
+    with open(os.path.join(args.output_directory, "parameters.json"), "w") as f:
         json.dump(
             {
                 "n_train": args.n_train,
@@ -284,7 +341,7 @@ def main(argv):
         seed=args.dataset_seed
     )
     data = sparsify(training)
-    np.save(path.join(args.output_directory, "train.npy"), data)
+    np.save(os.path.join(args.output_directory, "train.npy"), data)
 
     # Write the test set
     test = MegapixelMNIST(
@@ -297,8 +354,8 @@ def main(argv):
         seed=args.dataset_seed
     )
     data = sparsify(test)
-    np.save(path.join(args.output_directory, "test.npy"), data)
+    np.save(os.path.join(args.output_directory, "test.npy"), data)
 
-#how to use: python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mnist_1500
+# Usage example: python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mnist_1500
 if __name__ == "__main__":
     main(None)

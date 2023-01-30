@@ -2,7 +2,7 @@ This repository implements IPS and demonstrates it on Megapixel MNIST.
 
 First, the Megapixel MNIST dataset needs to be created:
     1. Create the path: data/megapixel_mnist/dsets/megapixel_mnist_1500
-    2. Run make_mnist.py in data/megapixel_mnist as follows:
+    2. Run data/megapixel_mnist/make_mnist.py, e.g.:
     python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mnist_1500
 
 All configurations can be found in config/mnist_config.yml

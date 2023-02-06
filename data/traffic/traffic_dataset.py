@@ -1,22 +1,16 @@
-from collections import namedtuple
-from functools import partial
-import hashlib
 import os
-import math
-import h5py
-from PIL import Image
-import torch
-import urllib.request
 from os import path
 import sys
+import hashlib
+from functools import partial
+from collections import namedtuple
+import urllib.request
 import zipfile
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
+from PIL import Image
+
+from torch.utils.data import Dataset
 from torchvision import transforms
-import numpy as np
-import kornia
-from kornia import augmentation as K
-from kornia.augmentation import AugmentationSequential
+
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -270,13 +264,13 @@ class TrafficSigns(Dataset):
     CLASSES = ["EMPTY", *LIMITS]
     IMG_SIZE = (1200, 1600)
 
-    def __init__(self, directory, patch_size, patch_stride, task_dict, train=True, seed=0):
+    def __init__(self, conf, train=True):
 
-        self.patch_size = patch_size
-        self.patch_stride = patch_stride
-        self.task_dict = task_dict
+        self.patch_size = conf.patch_size
+        self.patch_stride = conf.patch_stride
+        self.tasks = conf.tasks
         
-        self._data = self._filter(STS(directory, train, seed))
+        self._data = self._filter(STS(conf.data_dir, train, conf.seed))
         
         transform_list = [
             transforms.Resize([*self.IMG_SIZE])
@@ -349,7 +343,7 @@ class TrafficSigns(Dataset):
         patches = patches.reshape(-1, *patches.shape[2:])
 
         data_dict = {'input': patches}
-        for task in self.task_dict.values():
+        for task in self.tasks.values():
             data_dict[task['name']] = category
 
         return data_dict

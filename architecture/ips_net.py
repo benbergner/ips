@@ -3,7 +3,7 @@ import math
 
 import torch
 import torch.nn as nn
-from torchvision.models import resnet18, resnet50
+from torchvision.models import resnet18, resnet50, ResNet18_Weights, ResNet50_Weights
 
 from utils.utils import shuffle_batch, shuffle_instance
 from architecture.transformer import Transformer, pos_enc_1d
@@ -15,18 +15,22 @@ class IPSNet(nn.Module):
     """
 
     def get_patch_enc(self, enc_type, pretrained, n_chan_in, n_res_blocks):
-        # get architecture for patch encoder
+        # Get architecture for patch encoder
         if enc_type == 'resnet18': 
             res_net_fn = resnet18
+            weights=ResNet18_Weights.IMAGENET1K_V1 if pretrained else None
         elif enc_type == 'resnet50':
             res_net_fn = resnet50
-        res_net = res_net_fn(pretrained=pretrained)
+            # Resnet50 pretrained weights not used in experiments
+            weights=ResNet50_Weights.IMAGENET1K_V1 if pretrained else None        
+
+        res_net = res_net_fn(weights=weights)
 
         if n_chan_in == 1:
-            # standard resnet uses 3 input channels
+            # Standard resnet uses 3 input channels
             res_net.conv1 = nn.Conv2d(n_chan_in, 64, kernel_size=7, stride=2, padding=3, bias=False)
         
-        # compose patch encoder
+        # Compose patch encoder
         layer_ls = []
         layer_ls.extend([
             res_net.conv1,

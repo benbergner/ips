@@ -3,7 +3,7 @@ n_epoch: 150          # number of epochs
 B: 16                 # batch size
 B_seq: 16             # sequential batch size, set either to
                       # 1 (eager sequential loading) or B (eager or lazy loading)
-n_epoch_warmup: 10   # number of warm-up epochs
+n_epoch_warmup: 10    # number of warm-up epochs
 lr: 0.0003            # learning rate
 wd: 0.1               # weight decay
 
@@ -11,21 +11,28 @@ wd: 0.1               # weight decay
 n_class: 4                        # number of classes
 data_dir: 'data/traffic/dsets'    # directory of dataset
 n_worker: 8                       # number of workers
+eager: True                       # eager or lazy loading
+
+#misc
+eps: 0.000001
+seed: 0
+track_efficiency: False # for training, needs to be False
+track_epoch: 0          # only relevant if efficiency stats are tracked.
 
 #enc
 use_patch_enc: True     # should a patch encoder be used?
 enc_type: 'resnet18'    # used backbone, set either to 'resnet18' or 'resnet50'
-pretrained: True       # should ImageNet weights be used?
+pretrained: True        # should ImageNet weights be used?
 n_chan_in: 3            # number of input channels
 n_res_blocks: 4         # number of residual ResNet blocks
 
 #ips
-shuffle: True               # should patches be shuffled?
-shuffle_style: 'batch'      # shuffle each instance the same way? 'batch' or 'instance'
-n_token: 1                  # Number of learnable query tokens
-N: 192                      # Number of total patches, needs to be consistent with patch size/stride
-M: 10                        # memory size
-I: 32                      # iteration size
+shuffle: True                 # should patches be shuffled?
+shuffle_style: 'batch'        # shuffle each instance the same way? 'batch' or 'instance'
+n_token: 1                    # Number of learnable query tokens
+N: 192                        # Number of total patches, needs to be consistent with patch size/stride
+M: 2                          # memory size
+I: 32                         # iteration size
 patch_size: [100, 100]        # dims of patch
 patch_stride: [100, 100]      # stride of patch, use 25 per side for 50% overlap
 
@@ -35,8 +42,8 @@ H: 8                                      # number of transformer layer heads
 D: 512                                    # dimension of features
 D_k: 64                                   # dimension of query/keys per head
 D_v: 64                                   # dimension of values per head
-D_inner: 2048                             # hidden dimension of MLP
-attn_dropout: 0.1                         # attention dropout
+D_inner: 512                              # hidden dimension of MLP
+attn_dropout: 0.                          # attention dropout
 dropout: 0.1                              # standard dropout
 
 tasks:

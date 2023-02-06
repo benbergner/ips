@@ -135,8 +135,8 @@ def train_one_epoch(net, criterions, data_loader, optimizer, device, epoch, log_
         mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
         
         # Fill batch placeholders with patches from IPS step
-        batch_data = fill_batch(mem_patch, mem_pos_enc, labels, mem_patch_iter, mem_pos_enc_iter,
-                                data, n_prep, n_prep_batch, conf)
+        batch_data = fill_batch(mem_patch, mem_pos_enc, labels, data, n_prep, n_prep_batch,
+                                mem_patch_iter, mem_pos_enc_iter, conf)
         mem_patch, mem_pos_enc, labels, n_prep, n_prep_batch = batch_data
 
         # Check if the current batch is full or if it is the last batch
@@ -210,8 +210,8 @@ def evaluate(net, criterions, data_loader, device, epoch, log_writer, conf):
         
         mem_patch_iter, mem_pos_enc_iter = net.ips(image_patches)
         
-        batch_data = fill_batch(mem_patch, mem_pos_enc, labels, mem_patch_iter, mem_pos_enc_iter,
-                                data, n_prep, n_prep_batch, conf)
+        batch_data = fill_batch(mem_patch, mem_pos_enc, labels, data, n_prep, n_prep_batch,
+                                mem_patch_iter, mem_pos_enc_iter, conf)
         mem_patch, mem_pos_enc, labels, n_prep, n_prep_batch = batch_data
 
         batch_full = (n_prep == conf.B)

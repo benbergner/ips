@@ -11,14 +11,14 @@ from torch.utils.data import DataLoader
 
 from utils.utils import Logger, Struct
 from data.megapixel_mnist.mnist_dataset import MegapixelMNIST
-#from data.traffic.traffic_dataset import TrafficSigns
+from data.traffic.traffic_dataset import TrafficSigns
 from architecture.ips_net import IPSNet
 from training.iterative import train_one_epoch, evaluate
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-dataset = 'mnist' # either one of {'mnist', 'camelyon', 'traffic'}
+dataset = 'traffic' # either one of {'mnist', 'camelyon', 'traffic'}
 
 # get config
 with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:

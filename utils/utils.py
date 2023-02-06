@@ -125,12 +125,13 @@ class Logger(nn.Module):
            
             avg_loss += mean_loss
  
-            print_str += "task: {}, mean loss: {:.5f}, {}: {:.5f}\n".format(t, mean_loss, metric_name, metric)
+            print_str += "task: {}, mean loss: {:.5f}, {}: {:.5f}, ".format(t, mean_loss, metric_name, metric)
 
         avg_loss /= len(self.task_dict.values())
-        print_str += "avg_loss: {}\n".format(avg_loss)
+        print_str += "avg_loss: {}".format(avg_loss)
 
         for k, v in kwargs.items():
-            print_str += "{}: {}\n".format(k, v)
+            print_str += ", {}: {}".format(k, v)
+        print_str += "\n"
 
         print(print_str)

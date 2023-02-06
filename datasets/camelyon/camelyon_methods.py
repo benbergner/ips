@@ -1,10 +1,33 @@
+import numpy as np
 
+from datamodel import Slide
+
+def rgb2gray(rgb: np.ndarray) -> np.ndarray:
+    """
+    Convert RGB color image to a custom gray scale for HE-stained WSI
+
+    Parameters
+    ----------
+    rgb : np.ndarray
+        Color image.
+
+    Returns
+    -------
+    np.ndarray
+        Gray scale image as float64 array.
+    """
+    gray = 1.0 * rgb[::, ::, 0] + rgb[::, ::, 2] - (
+        (1.0 * rgb[::, ::, 0] + rgb[::, ::, 1] + rgb[::, ::, 2])
+        / 1.5)
+    gray[gray < 0] = 0
+    gray[gray > 255] = 255
+    return gray
 
 def _otsu_by_hist(hist, bin_centers) -> float:
-    """Return threshold value based on Otsu's method using an images histogram.
+    """
+    Return threshold value based on Otsu's method using an images histogram.
 
     Based on skimage's threshold_otsu method without histogram generation.
-
 
     Parameters
     ----------
@@ -14,18 +37,15 @@ def _otsu_by_hist(hist, bin_centers) -> float:
     bin_centers: np.ndarray
         Centers of the histogram's bins.
 
-
     Returns
     -------
     threshold : float
         Upper threshold value. All pixels with an intensity higher than
         this value are assumed to be foreground.
 
-
     References
     ----------
     Wikipedia, http://en.wikipedia.org/wiki/Otsu's_Method
-
 
     See Also
     --------
@@ -50,8 +70,28 @@ def _otsu_by_hist(hist, bin_centers) -> float:
     threshold = bin_centers[:-1][idx]
     return threshold
 
+def add_dict(left, right):
+    """
+    Merge two dictionaries by adding common items.
+
+    Parameters
+    ----------
+    left: dict
+        Left dictionary.
+
+    right
+        Right dictionary
+
+    Returns
+    -------
+    dict
+        Resulting dictionary
+    """
+    return {k: left.get(k, 0) + right.get(k, 0) for k in left.keys() | right.keys()}
+
 def get_otsu_threshold(slide: Slide, level=0, step_size=1000) -> float:
-    """Calculate the otsu threshold by reading in the slide in chunks.
+    """
+    Calculate the otsu threshold by reading in the slide in chunks.
 
     To avoid memory overflows the slide image will be loaded in by chunks of the size
     $slide width × `step_size`$. A histogram will be generated of these chunks that will

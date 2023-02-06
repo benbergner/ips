@@ -8,10 +8,10 @@ lr: 0.0003            # learning rate
 wd: 0.1               # weight decay
 
 #dset
-n_class: 4                        # number of classes
-data_dir: 'data/traffic/dsets'    # directory of dataset
-n_worker: 8                       # number of workers
-eager: True                       # eager or lazy loading
+n_class: 4                          # number of classes
+data_dir: 'datasets/traffic/dsets'  # directory of dataset
+n_worker: 8                         # number of workers
+eager: True                         # eager or lazy loading
 
 #misc
 eps: 0.000001

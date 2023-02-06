@@ -130,7 +130,8 @@ dmypy.json
 
 # custom ignores
 logs/
-data/megapixel_mnist/dsets
-data/traffic/dsets
+datasets/megapixel_mnist/dsets
+datasets/traffic/dsets
+datasets/camelyon/data
 *.slurm
 .vscode/

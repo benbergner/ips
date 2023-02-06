@@ -5,6 +5,7 @@ from typing import Dict
 
 from PIL import Image
 from PIL import ImageDraw
+from progress.bar import IncrementalBar
 
 Point = namedtuple('Point', 'x y')
 
@@ -32,6 +33,19 @@ def find_files(pattern, path) -> Dict[str, str]:
             if fnmatch.fnmatch(name, pattern):
                 result[name] = os.path.join(root, name)
     return result
+
+class ProgressBar(IncrementalBar):
+    @property
+    def remaining_fmt(self):
+        m, s = divmod(self.eta, 60)
+        h, m = divmod(m, 60)
+        return f'{h:02}:{m:02}:{s:02}'
+
+    @property
+    def elapsed_fmt(self):
+        m, s = divmod(self.elapsed, 60)
+        h, m = divmod(m, 60)
+        return f'{h:02}:{m:02}:{s:02}'
 
 def draw_polygon(image: Image.Image, polygon, *, fill, outline) -> Image.Image:
     """

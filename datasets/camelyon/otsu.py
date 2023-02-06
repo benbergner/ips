@@ -3,7 +3,7 @@ import argparse
 import multiprocessing as mp
 
 from datamodel import SlideManager, Slide
-from camelyon_methods import get_otsu_threshold
+from datasets.camelyon.cam_methods import get_otsu_threshold
 
 parser = argparse.ArgumentParser(
     description="Compute Otsu thresholds from WSIs"

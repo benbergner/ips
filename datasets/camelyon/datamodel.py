@@ -400,8 +400,7 @@ class SlideManager:
             'annotations': os.path.join(data_dir, 'training/lesion_annotations'),
             'test': os.path.join(data_dir, 'testing/images'),
             'test_annotations': os.path.join(data_dir, 'testing/lesion_annotations'),
-            'otsu': os.path.join(data_dir, 'test123.csv')
-            #'otsu': os.path.join(data_dir, 'otsu_thresholds_chunked.csv')
+            'otsu': os.path.join(data_dir, 'otsu_thresholds_chunked.csv')
         }
         self.__load_data()
 

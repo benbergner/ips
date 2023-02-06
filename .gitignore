@@ -135,3 +135,4 @@ datasets/traffic/dsets
 datasets/camelyon/data
 *.slurm
 .vscode/
+.gitignore

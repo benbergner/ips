@@ -166,7 +166,7 @@ class BYOLTrainer():
         prefetcher = data_prefetcher(self.train_loader)
         images, _ = prefetcher.next()
         i = 0
-        while images is not None:
+        while i < self.num_examples // self.global_batch_size:
             i += 1
             self.adjust_learning_rate(self.steps)
             self.adjust_mm(self.steps)
@@ -196,15 +196,12 @@ class BYOLTrainer():
             backward_time.update(time.time() - tflag)
             loss_meter.update(loss.item(), view1.size(0))
 
-            tflag = time.time()
-            log_time.update(time.time() - tflag)
-
             batch_time.update(time.time() - end)
             end = time.time()
 
             # Print log info
             if self.gpu == 0 and self.steps % self.log_step == 0:
-                printer(f'Epoch: [{epoch}][{i}/{len(self.train_loader)}]\t'
+                printer(f'Epoch: [{epoch}][{i}/{self.num_examples // self.global_batch_size}]\t'
                         f'Step {self.steps}\t'
                         f'lr {round(self.optimizer.param_groups[0]["lr"], 5)}\t'
                         f'mm {round(self.mm, 5)}\t'
@@ -212,7 +209,6 @@ class BYOLTrainer():
                         f'Batch Time {batch_time.val:.4f} ({batch_time.avg:.4f})\t'
                         f'Data Time {data_time.val:.4f} ({data_time.avg:.4f})\t'
                         f'Forward Time {forward_time.val:.4f} ({forward_time.avg:.4f})\t'
-                        f'Backward Time {backward_time.val:.4f} ({backward_time.avg:.4f})\t'
-                        f'Log Time {log_time.val:.4f} ({log_time.avg:.4f})\t')
+                        f'Backward Time {backward_time.val:.4f} ({backward_time.avg:.4f})\t')
 
             images, _ = prefetcher.next()

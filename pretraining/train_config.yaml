@@ -20,8 +20,8 @@ amp:
 
 data:
   resize_size: 224
-  data_workers: 31  #32
-  train_batch_size: 64 #256
+  data_workers: 32
+  train_batch_size: 64
   val_batch_size: 64
   dual_views: true
   num_examples: 270000

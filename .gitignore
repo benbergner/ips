@@ -133,6 +133,9 @@ logs/
 datasets/megapixel_mnist/dsets
 datasets/traffic/dsets
 datasets/camelyon/data
+.data_temp/
 *.slurm
 .vscode/
 .gitignore
+main_mnist.py
+test.png

@@ -12,7 +12,7 @@ from skimage.draw import polygon as ski_polygon
 from skimage import segmentation
 from skimage.morphology import dilation
 
-from cam_utils import Point, get_relative_polygon, draw_polygon, find_files
+from datasets.camelyon.cam_utils import Point, get_relative_polygon, draw_polygon, find_files
 
 #logger = LogStyleAdapter(logging.getLogger('preprocessing.slide'))
 
@@ -400,13 +400,12 @@ class SlideManager:
             'annotations': os.path.join(data_dir, 'training/lesion_annotations'),
             'test': os.path.join(data_dir, 'testing/images'),
             'test_annotations': os.path.join(data_dir, 'testing/lesion_annotations'),
-            'otsu': os.path.join(data_dir, 'otsu_thresholds_chunked.csv')
+            'otsu': os.path.join(data_dir, 'otsu_thresholds_iclr.csv')
         }
         self.__load_data()
 
     def __load_data(self):
         """Load slides."""
-        #logger.info('Loading CAMELYON16 slides')
 
         # Negative slides
         self.otsu_thresholds = defaultdict(dict)
@@ -417,8 +416,7 @@ class SlideManager:
                     self.otsu_thresholds[line['name']][int(line['level'])] = float(
                         line['threshold'])
         except FileNotFoundError:
-            pass
-            #logger.info('No pre-calculated otsu thresholds found.')
+            print('No pre-calculated otsu thresholds found.')
 
         slide_files = find_files('*.tif', self._path['negative'])
         for file_name, slide_path in sorted(slide_files.items()):
@@ -434,7 +432,7 @@ class SlideManager:
             self.negative_slides += (slide,)
             self.num_negative_train += 1
 
-        # positive (tumor) slides
+        # Positive (tumor) slides
         slide_files = find_files('*.tif', self._path['positive'])
         for file_name, slide_path in sorted(slide_files.items()):
             slide_name, _, _ = file_name.partition('.')

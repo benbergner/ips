@@ -1,4 +1,4 @@
-<img src="images/ips.png" width="800" />
+<img src="images/ips.png" width="600" />
 
 This repository implements IPS and demonstrates it on Megapixel MNIST.
 

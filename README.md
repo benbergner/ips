@@ -14,14 +14,14 @@ openreview: https://openreview.net/forum?id=QCrw0u9LQ7
 ## General usage
 
 IPS is applied to 3 datasets: Traffic signs, Megapixel MNIST and CAMELYON16.  
-The dataset can be set in `main.py`, by setting variable `dataset` to either traffic, mnist or camelyon.  
-All other settings can be set in dataset specific .yml files in directory `config`.
+The dataset can be set in `main.py`, by changing variable `dataset` to either traffic, mnist or camelyon.  
+All other settings can be specified in `config/{dataset}.yml`.
 
-Then, simply run: `python main.py`
+To train a model, simply run: `python main.py`
 
 ## Notebook
 
-The repo covers different data loading options (eager, eager sequential, lazy), positional encoding, tracking of efficiency metrics, single and multi-task learning. However, there is also simple example prepared as a Jupyter notebook (`ips_example.ipynb`), which can be loaded from Google Colab.
+The repo covers different data loading options (eager, eager sequential, lazy), positional encoding, tracking of efficiency metrics, single and multi-task learning and different loss functions. However, there is also a simple example prepared as a Jupyter notebook (`ips_example.ipynb`) that can be imported into Google Colab, for example.
 
 ## Dataset specific considerations
 
@@ -30,21 +30,19 @@ The repo covers different data loading options (eager, eager sequential, lazy), 
 **Megapixel MNIST**: Before training, the dataset needs to be created by running `data/megapixel_mnist/make_mnist.py`.  
 For example: `python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mnist_1500`.
 
-**CAMELYON16**: Before training, the following steps need to be done:
-1. Download the CAMELYON16 dataset (e.g. from the Grand Challenge website)
+**CAMELYON16**: Requires more preprocessing steps and resources (time, hardware). Before training, the following needs to be done:
+1. Download the CAMELYON16 dataset (up-to-date links can be found on Grand Challenge)
+2. Compute Otsu thresholds by running `data/camelyon/otsu.py`
+3. Extract foreground coordinates by running `data/camelyon/foreground.py`
+4. Pre-train with BYOL by running `pretraining/byol_main.py`
+5. Extract features from pre-trained model by running `data/camelyon/extract_feat.py`
 
-This repository implements IPS and demonstrates it on Megapixel MNIST.
-
-First, the Megapixel MNIST dataset needs to be created:
-    1. Create the path: data/megapixel_mnist/dsets/megapixel_mnist_1500
-    2. Run data/megapixel_mnist/make_mnist.py, e.g.:
-    python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mnist_1500
-
-All configurations can be found in config/mnist_config.yml
-If you want to track computational efficiency metrics, set track_efficiency: True
-If you want to train a model, set track_efficiency: False
-
-Run: python main.py
-
-If you are primarily interested in using IPS and/or the cross-attention MIL pooling
-function in your own work, check architecture/ips_net.py and architecture/transformer.py
+## Citation
+```bibtex
+@article{bergner2022iterative,
+  title={Iterative Patch Selection for High-Resolution Image Recognition},
+  author={Bergner, Benjamin and Lippert, Christoph and Mahendran, Aravindh},
+  journal={arXiv preprint arXiv:2210.13007},
+  year={2022}
+}
+```

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
-from pretraining.byol_transform import MultiViewDataInjector, get_transform
+from pretraining.data.byol_transform import MultiViewDataInjector, get_transform
 from datasets.camelyon.datamodel import Slide, SlideManager
 from datasets.camelyon.cam_methods import remove_alpha_channel
 

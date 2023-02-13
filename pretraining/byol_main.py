@@ -9,7 +9,7 @@ import yaml
 import torch
 import torch.distributed as dist
 
-from pretraining.byol_trainer import BYOLTrainer
+from pretraining.trainer.byol_trainer import BYOLTrainer
 from pretraining.utils import logging_util
 
 def run_task(config):
@@ -34,7 +34,7 @@ def run_task(config):
         trainer.save_checkpoint(epoch)
 
 def main():
-    with open(Path(Path(__file__).parent, 'train_config.yaml'), 'r') as f:
+    with open(Path(Path(__file__).parent, 'config/train_config.yaml'), 'r') as f:
         config = yaml.safe_load(f)
     run_task(config)
 

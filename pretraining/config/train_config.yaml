@@ -41,7 +41,7 @@ optimizer:
   exclude_bias_and_bn: true
 
 checkpoint:
-  resume_path:
+  resume_path: "/dhc/home/benjamin.bergner/netstore-old/projects/gigapixel/giganet/models/camelyon16/byol_repr/resnet50_320.pth.tar"
   save_epoch: 10
   ckpt_path: "/dhc/home/benjamin.bergner/netstore-old/projects/gigapixel/giganet/models/camelyon16/byol_repr/{}_{}.pth.tar"
 

@@ -1,3 +1,5 @@
+<img src="images/ips.png" width="800" />
+
 This repository implements IPS and demonstrates it on Megapixel MNIST.
 
 First, the Megapixel MNIST dataset needs to be created:

@@ -1,6 +1,5 @@
 #-*- coding:utf-8 -*-
 import time
-import datetime
 
 import numpy as np
 import torch
@@ -11,9 +10,9 @@ import apex
 from apex.parallel import DistributedDataParallel as DDP
 from apex import amp
 
-from pretraining.byol_model import BYOLModel
-from pretraining.larssgd import LARS
-from pretraining.camelyon_loader import CAMELYONLoader
+from pretraining.model.byol_model import BYOLModel
+from pretraining.model.larssgd import LARS
+from pretraining.data.camelyon_loader import CAMELYONLoader
 from pretraining.utils import params_util, logging_util, eval_util
 from pretraining.utils.data_prefetcher import data_prefetcher
 

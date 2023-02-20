@@ -1,4 +1,0 @@
-BYOL pretraining code adapted from https://github.com/yaox12/BYOL-PyTorch
-
-For a single node with 4 GPUs, you may start pretraining from the IPS directory as follows:
-python -m torch.distributed.launch --nproc_per_node=4 --nnodes=1 --node_rank=0 pretraining/byol_main.py

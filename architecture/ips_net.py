@@ -168,6 +168,8 @@ class IPSNet(nn.Module):
     # IPS runs in no-gradient mode
     @torch.no_grad()
     def ips(self, patches):
+        """ Iterative Patch Selection """
+
         # Get useful variables
         M = self.M
         I = self.I
@@ -267,16 +269,6 @@ class IPSNet(nn.Module):
 
         patch_shape = mem_patch.shape
         B, M = patch_shape[:2]
-
-        """ #TODO: remove later
-
-        if len(patch_shape) == 3: # B, N, D
-            is_image = False
-        elif len(patch_shape) == 5: # B, N, n_chan_in, height, width
-            is_image = True
-        else:
-            raise ValueError('The input is neither an image (5 dim) nor a feature vector (3 dim).')
-        """
 
         mem_emb = self.encoder(mem_patch.reshape(-1, *patch_shape[2:]))
         mem_emb = mem_emb.view(B, M, -1)        

@@ -12,7 +12,7 @@ n_class: 1                            # number of classes
 data_dir: 'data/camelyon/dsets'       # directory of dataset
 train_fname: 'feat_train_500ep.hdf5'  # filename of extracted features of training set
 test_fname: 'feat_test_500ep.hdf5'    # filename of extracted features of test set
-n_worker: 32                          # number of workers
+n_worker: 64                          # number of workers
 pin_memory: False                     # use pin memory in dataloader
 eager: True                           # eager or lazy loading
 

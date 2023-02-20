@@ -185,17 +185,6 @@ class IPSNet(nn.Module):
             pos_enc = pos_enc.expand(B, -1, -1) if use_pos else None
             return patches.to(device), pos_enc 
 
-        """ #TODO: remove later
-        # Only use patch encoder when working with image patches
-        # as opposed to embedding vectors
-        if len(patch_shape) == 3: # B, N, D
-            is_image = False
-        elif len(patch_shape) == 5: # B, N, n_chan_in, height, width
-            is_image = True
-        else:
-            raise ValueError('The input is neither an image (5 dim) nor a feature vector (3 dim).')
-        """
-
         # IPS runs in evaluation mode
         if self.training:
             self.encoder.eval()

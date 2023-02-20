@@ -12,7 +12,7 @@ from skimage.draw import polygon as ski_polygon
 from skimage import segmentation
 from skimage.morphology import dilation
 
-from datasets.camelyon.cam_utils import Point, get_relative_polygon, draw_polygon, find_files
+from data.camelyon.cam_utils import Point, get_relative_polygon, draw_polygon, find_files
 
 #logger = LogStyleAdapter(logging.getLogger('preprocessing.slide'))
 
@@ -393,6 +393,7 @@ class SlideManager:
         self.num_negative_train = 0
 
         data_dir = os.path.expanduser(data_dir)
+        #TODO: make otsu directory an additional argument.
         self._path = {
             'dir': data_dir,
             'negative': os.path.join(data_dir, 'training/normal'),

@@ -2,7 +2,7 @@ model:
   base_momentum: 0.99
   backbone:
     type: "resnet50"
-    pretrained: true
+    pretrained: false
   projection:
     type: "MLP"
     input_dim: 2048
@@ -27,7 +27,7 @@ data:
   num_examples: 270000
 
   dset_path: "/dhc/dsets/CAMELYON/CAMELYON16/"
-  coords_path: "/dhc/home/benjamin.bergner/netstore-old/projects/IPS/datasets/camelyon/data/coords_train.pkl"
+  coords_path: "/dhc/home/benjamin.bergner/netstore-old/projects/IPS/data/camelyon/dsets/coords_train.pkl"
   level: 0
   tile_size: 256
 
@@ -41,9 +41,9 @@ optimizer:
   exclude_bias_and_bn: true
 
 checkpoint:
-  resume_path: "/dhc/home/benjamin.bergner/netstore-old/projects/gigapixel/giganet/models/camelyon16/byol_repr/resnet50_320.pth.tar"
+  resume_path: "/dhc/home/benjamin.bergner/netstore-old/projects/gigapixel/giganet/models/camelyon16/byol_scratch/resnet50_220.pth.tar"
   save_epoch: 10
-  ckpt_path: "/dhc/home/benjamin.bergner/netstore-old/projects/gigapixel/giganet/models/camelyon16/byol_repr/{}_{}.pth.tar"
+  ckpt_path: "/dhc/home/benjamin.bergner/netstore-old/projects/gigapixel/giganet/models/camelyon16/byol_scratch/{}_{}.pth.tar"
 
 log:
   log_step: 50

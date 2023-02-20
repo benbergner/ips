@@ -1,9 +1,4 @@
-#-*- coding:utf-8 -*-
 import os
-#working_dir = "/dhc/home/benjamin.bergner/netstore-old/projects/gigapixel/giganet"
-#os.chdir(working_dir)
-#sys.path.append(working_dir)
-
 from pathlib import Path
 import yaml
 import torch

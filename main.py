@@ -10,15 +10,16 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from utils.utils import Logger, Struct
-from datasets.megapixel_mnist.mnist_dataset import MegapixelMNIST
-from datasets.traffic.traffic_dataset import TrafficSigns
+from data.megapixel_mnist.mnist_dataset import MegapixelMNIST
+from data.traffic.traffic_dataset import TrafficSigns
+from data.camelyon.camelyon_dataset import CamelyonFeatures
 from architecture.ips_net import IPSNet
 from training.iterative import train_one_epoch, evaluate
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-dataset = 'traffic' # either one of {'mnist', 'camelyon', 'traffic'}
+dataset = 'camelyon' # either one of {'mnist', 'camelyon', 'traffic'}
 
 # get config
 with open(os.path.join('config', dataset + '_config.yml'), "r") as ymlfile:
@@ -37,9 +38,14 @@ if dataset == 'mnist':
 elif dataset == 'traffic':
     train_data = TrafficSigns(conf, train=True)
     test_data = TrafficSigns(conf, train=False)
+elif dataset == 'camelyon':
+    train_data = CamelyonFeatures(conf, train=True)
+    test_data = CamelyonFeatures(conf, train=False)
 
-train_loader = DataLoader(train_data, batch_size=conf.B_seq, shuffle=True, num_workers=conf.n_worker, pin_memory=True)
-test_loader = DataLoader(test_data, batch_size=conf.B_seq, shuffle=False, num_workers=conf.n_worker, pin_memory=True)
+train_loader = DataLoader(train_data, batch_size=conf.B_seq, shuffle=True,
+    num_workers=conf.n_worker, pin_memory=conf.pin_memory, persistent_workers=True)
+test_loader = DataLoader(test_data, batch_size=conf.B_seq, shuffle=False,
+    num_workers=conf.n_worker, pin_memory=conf.pin_memory, persistent_workers=True)
 
 # define network
 net = IPSNet(device, conf).to(device)
@@ -66,7 +72,7 @@ for epoch in range(conf.n_epoch):
     more_to_print = {'lr': optimizer.param_groups[0]['lr']}
     log_writer_train.print_stats(epoch, train=True, **more_to_print)
 
-    evaluate(net, criterions, test_loader, device, epoch, log_writer_test, conf)
+    evaluate(net, criterions, test_loader, device, log_writer_test, conf)
     
     log_writer_test.compute_metric()
     log_writer_test.print_stats(epoch, train=False)

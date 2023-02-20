@@ -9,8 +9,9 @@ wd: 0.1               # weight decay
 
 #dset
 n_class: 10                                                       # number of classes
-data_dir: 'datasets/megapixel_mnist/dsets/megapixel_mnist_1500'   # directory of dataset
+data_dir: 'data/megapixel_mnist/dsets/megapixel_mnist_1500'       # directory of dataset
 n_worker: 8                                                       # number of workers
+pin_memory: True                                                  # use pin memory in dataloader
 eager: True                                                       # eager or lazy loading
 
 #misc
@@ -20,7 +21,7 @@ track_efficiency: False # for training, needs to be False
 track_epoch: 0          # only relevant if efficiency stats are tracked.
 
 #enc
-use_patch_enc: True     # should a patch encoder be used?
+is_image: True          # should a convolutional patch encoder be used?
 enc_type: 'resnet18'    # used backbone, set either to 'resnet18' or 'resnet50'
 pretrained: False       # should ImageNet weights be used?
 n_chan_in: 1            # number of input channels

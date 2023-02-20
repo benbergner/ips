@@ -4,13 +4,12 @@ import h5py
 from pathlib import Path
 import argparse
 import yaml
-from tqdm import tqdm
 import pandas as pd
 import torch
 
 from torch.utils.data import DataLoader
 from pretraining.model.byol_model import BYOLModel
-from datasets.camelyon.cam_dataset import CAMELYON16Dataset, RandomPatchSampler
+from data.camelyon.camelyon_dataset import CamelyonImages, PatchSampler
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
@@ -45,13 +44,13 @@ parser.add_argument(
 parser.add_argument(
     "--batch_size",
     type=int,
-    default=256,
+    default=128,
     help="Choose the batch size"
 )
 parser.add_argument(
     "--num_workers",
     type=int,
-    default=16,
+    default=8,
     help="Number of workers for data loading"
 )
 parser.add_argument(
@@ -90,31 +89,12 @@ coords_dir = args.coords_dir
 model_dir = args.model_dir
 feat_save_dir = args.feat_save_dir
 
-"""
-model_load_path_byol = 'models/camelyon16/byol/resnet50_' + str(n_epoch_load) + '.pth.tar'
-
-specifier_train = which_dataset + '_lvl' + str(level) + '_otsu_lvl' + str(otsu_level) + '_size' + str(tile_size) + '_thresh' + str(poi_threshold) + '_' + add_str + '_train.pkl'
-specifier_test = which_dataset + '_lvl' + str(level) + '_otsu_lvl' + str(otsu_level) + '_size' + str(tile_size) + '_thresh' + str(poi_threshold) + '_' + add_str + '_test.pkl'
-dset_path16 = "/dhc/dsets/CAMELYON/CAMELYON16/"
-print("specifier_train: ", specifier_train)
-
-coords_path_train = os.path.join("data", "camelyon", "data_info_files", "coords_" + specifier_train)
-bounds_path_train = os.path.join("data", "camelyon", "data_info_files", "bounds_" + specifier_train)
-coords_path_test = os.path.join("data", "camelyon", "data_info_files", "coords_" + specifier_test)
-bounds_path_test = os.path.join("data", "camelyon", "data_info_files", "bounds_" + specifier_test)
-
-if train:
-    #feat_save_path = 'data/camelyon/data_info_files/resnet50_cam16_' + str(level) + '_' + which_backbone + str(n_epoch_load) + '_train.hdf5'
-    feat_save_path = 'data/camelyon/data_info_files/' + which_backbone + '_cam16_' + str(level) + '_thresh' + str(poi_threshold) + '_' + which_backbone + str(n_epoch_load) + '_' + add_str + '_centercr_train.hdf5'
-else:
-    #feat_save_path = 'data/camelyon/data_info_files/resnet50_cam16_' + str(level) + '_' + which_backbone + str(n_epoch_load) + '_test.hdf5'
-    feat_save_path = 'data/camelyon/data_info_files/' + which_backbone + '_cam16_' + str(level) + '_thresh' + str(poi_threshold) + '_' + which_backbone + str(n_epoch_load) + '_' + add_str + '_centercr_test.hdf5'
-"""
-
+# Define dataset
 bounds_df = pd.read_pickle(bounds_dir)
 coords_df = pd.read_pickle(coords_dir)
-sampler = RandomPatchSampler(bounds_df, batch_size=batch_size, patch_shuffle=False, slide_shuffle=False)
-dataset = CAMELYON16Dataset(data_dir, coords_df, lvl, tile_size)
+sampler = PatchSampler(bounds_df, batch_size=batch_size)
+dataset = CamelyonImages(data_dir, coords_df, lvl, tile_size)
+#TODO: why batch size in sampler and loader?
 dataloader = DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
 
 h5file = h5py.File(feat_save_dir, "w")
@@ -174,7 +154,7 @@ with torch.no_grad():
             feature_list.append(features)
             pos_idx_list.append(pos_idx)
 
-        is_last_patch = data_idx[-1] == RandomPatchSampler.SLIDE_END_TOKEN#-2
+        is_last_patch = data_idx[-1] == PatchSampler.SLIDE_END_TOKEN
         if is_last_patch:
             num_processed += 1
             print("Nr. slides processed: ", num_processed)

@@ -1,0 +1,54 @@
+#opt
+n_epoch: 50           # number of epochs
+B: 16                 # batch size
+B_seq: 1              # sequential batch size, set either to
+                      # B (eager and lazy loading) or 1 (eager sequential loading)
+n_epoch_warmup: 10    # number of warm-up epochs
+lr: 0.0003            # learning rate
+wd: 0.1               # weight decay
+
+#dset
+n_class: 1                        # number of classes
+data_dir: 'data/camelyon/dsets'   # directory of dataset
+#data_dir: '../gigapixel/giganet/data/camelyon/data_info_files'
+n_worker: 64                      # number of workers
+pin_memory: False                 # use pin memory in dataloader
+eager: True                       # eager or lazy loading
+
+#misc
+eps: 0.000001
+seed: 0
+track_efficiency: False # for training, needs to be False
+track_epoch: 0          # only relevant if efficiency stats are tracked.
+
+#enc
+is_image: False         # should a convolutional patch encoder be used?
+enc_type: 'resnet50'    # used backbone, set either to 'resnet18' or 'resnet50'
+pretrained: False       # should ImageNet weights be used?
+n_chan_in: 2048         # number of input channels from resnet 50
+
+#ips
+shuffle: True               # should patches be shuffled?
+shuffle_style: 'batch'      # 'batch' or 'instance'. 'batch' shuffles each instance of the batch the same way
+n_token: 1                  # number of learnable query tokens, corresponds to number of tasks (mnist has 4 tasks)
+M: 5000                     # memory size
+I: 5000                     # iteration size
+
+#aggr
+use_pos: False      # should positional encoding be used?
+H: 8                # number of transformer layer heads
+D: 512              # dimension of features
+D_k: 64             # dimension of query/keys per head
+D_v: 64             # dimension of values per head
+D_inner: 2048       # intermediate layer dimension in MLP
+attn_dropout: 0.1   # attention dropout
+dropout: 0.1        # standard dropout
+
+# define name, activation fn of final layer, whether multi-label, and metric to be used
+tasks:
+  task0:
+    id: 0
+    name: 'metastases'
+    act_fn: 'sigmoid'
+    multi_label: False
+    metric: 'auc'

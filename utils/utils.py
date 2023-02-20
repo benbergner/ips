@@ -1,7 +1,7 @@
 import sys
 import math
 import numpy as np
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, roc_auc_score
 from collections import defaultdict
 
 import torch
@@ -78,8 +78,8 @@ class Logger(nn.Module):
             
             if t_metr == 'accuracy':
                 y_pred = np.argmax(next_y_pred[t], axis=-1)
-            elif t_metr == 'multilabel_accuracy':
-                y_pred = next_y_pred[t]
+            elif t_metr in ['multilabel_accuracy', 'auc']:
+                y_pred = next_y_pred[t].tolist()
             self.y_preds[t].extend(y_pred)
             
             self.y_trues[t].extend(next_y_true[t])
@@ -104,7 +104,12 @@ class Logger(nn.Module):
                 total = y_pred.shape[0]
                 
                 self.metrics[t].append(correct / total)
-            
+            elif current_metric == 'auc':
+                y_pred = np.array(self.y_preds[t])
+                y_true = np.array(self.y_trues[t])
+                auc = roc_auc_score(y_true, y_pred)
+                self.metrics[t].append(auc)
+
             # reset per iteration losses, preds and labels
             self.losses_it[t] = []
             self.y_preds[t] = []
@@ -128,7 +133,7 @@ class Logger(nn.Module):
             print_str += "task: {}, mean loss: {:.5f}, {}: {:.5f}, ".format(t, mean_loss, metric_name, metric)
 
         avg_loss /= len(self.task_dict.values())
-        print_str += "avg_loss: {}".format(avg_loss)
+        print_str += "avg. loss over tasks: {:.5f}".format(avg_loss)
 
         for k, v in kwargs.items():
             print_str += ", {}: {}".format(k, v)

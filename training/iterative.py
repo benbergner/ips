@@ -8,7 +8,11 @@ def init_batch(device, conf):
     """
     Initialize the memory buffer for the batch consisting of M patches
     """
-    mem_patch = torch.zeros((conf.B, conf.M, conf.n_chan_in, *conf.patch_size)).to(device)
+    if conf.is_image:
+        mem_patch = torch.zeros((conf.B, conf.M, conf.n_chan_in, *conf.patch_size)).to(device)
+    else:
+        mem_patch = torch.zeros((conf.B, conf.M, conf.n_chan_in)).to(device)
+
     if conf.use_pos:
         mem_pos_enc = torch.zeros((conf.B, conf.M, conf.D)).to(device)
     else:
@@ -74,18 +78,22 @@ def compute_loss(net, mem_patch, mem_pos_enc, criterions, labels, conf):
 
         criterion = criterions[t_name]
         label = labels[t_name]
-        pred = preds[t_name]
+        pred = preds[t_name].squeeze(-1)
 
         if t_act == 'softmax':
             pred_loss = torch.log(pred + conf.eps)
+            label_loss = label
         else:
-            pred_loss = pred
+            pred_loss = pred#.view(-1)
+            label_loss = label.view(-1).type(torch.float32)
 
+        """
         if t_multi:
-            pred_loss = pred_loss.view(-1)
+            #pred_loss = pred_loss.view(-1)
             label_loss = label.view(-1) #label to be used in loss function
         else:
             label_loss = label
+        """
 
         task_loss = criterion(pred_loss, label_loss)
         # for logs
@@ -191,7 +199,7 @@ def train_one_epoch(net, criterions, data_loader, optimizer, device, epoch, log_
 
 # Disable gradient calculation during evaluation
 @torch.no_grad()
-def evaluate(net, criterions, data_loader, device, epoch, log_writer, conf):
+def evaluate(net, criterions, data_loader, device, log_writer, conf):
 
     # Set the network to evaluation mode
     net.eval()

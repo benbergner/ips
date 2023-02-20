@@ -1,30 +1,24 @@
+import os
 import random
+import h5py
 import numpy as np
-import pandas as pd
 import torch
 from torch.utils.data import Dataset, Sampler
 from torchvision import transforms
 
-from .datamodel import Slide, SlideManager
+from .datamodel import SlideManager
 from .cam_methods import remove_alpha_channel
 
-
-#TODO: is sampler only used for patch extraction? If yes, remove shuffling options and random in name
-class RandomPatchSampler(Sampler):
+class PatchSampler(Sampler):
 
     FILL_TOKEN = -1
     SLIDE_END_TOKEN = -2
 
-    def __init__(self, bounds, num_samples=None, patch_shuffle=False, slide_shuffle=False, batch_size=1):
+    def __init__(self, bounds, num_samples=None, batch_size=1):
         self.bounds = bounds
         self.num_samples = num_samples
-        self.patch_shuffle = patch_shuffle
-        self.slide_shuffle = slide_shuffle
         self.batch_size = batch_size
         self.num_slides = self.bounds.shape[0]
-
-        #print("data head: ", self.bounds.head(10))
-        #print("num_slides: ", self.num_slides)
     
     def __len__(self):
         return self.num_samples
@@ -32,9 +26,6 @@ class RandomPatchSampler(Sampler):
     def __iter__(self):
 
         slide_idx = list(range(self.num_slides))
-        if self.slide_shuffle:
-            random.shuffle(slide_idx)
-
         self.all_patch_idx = []
         for slide_id in slide_idx:
 
@@ -44,15 +35,11 @@ class RandomPatchSampler(Sampler):
 
             patch_idx = list(range(start_id, end_id+1))
             num_patches = len(patch_idx)
-            if self.patch_shuffle:
-                random.shuffle(patch_idx)
 
             # Add tokens to fill up batch
             remainder = (num_patches + 1) % self.batch_size # +1 extra patch
             num_to_add = self.batch_size - remainder# if remainder else 0
             patch_idx = patch_idx + [self.FILL_TOKEN] * num_to_add
-            if self.patch_shuffle:
-                random.shuffle(patch_idx)
 
             # Add token to identify end of slide
             patch_idx.append(self.SLIDE_END_TOKEN)
@@ -61,7 +48,7 @@ class RandomPatchSampler(Sampler):
         return iter(self.all_patch_idx)
 
 
-class CAMELYON16Dataset(Dataset):
+class CamelyonImages(Dataset):
 
     def __init__(self, data_dir, coords_df, lvl, tile_size):
 
@@ -76,7 +63,7 @@ class CAMELYON16Dataset(Dataset):
             transforms.ToPILImage(),
             transforms.CenterCrop(224),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
         ]
         self.transform = transforms.Compose(transform_list)
 
@@ -95,21 +82,8 @@ class CAMELYON16Dataset(Dataset):
             slide_name, x, y, pos_id = row[['name', 'x', 'y', 'pos_id']]
 
             if slide_name != self.current_slide_name:
-                #thresh = self.mgr.otsu_thresholds[slide_name]
-                slide = self.slide_man.get_slide(slide_name)# slide_paths[slide_name]
-                """
-                if slide_name in self.mgr.annotation_paths:
-                    annotation_path = self.mgr.annotation_paths[slide_name]
-                else:
-                    annotation_path = None
+                slide = self.slide_man.get_slide(slide_name)
                 
-                if slide_name in self.mgr.stages:
-                    stage = self.mgr.stages[slide_name]
-                else:
-                    stage = None
-                """
-                #slide = Slide(slide_name, slide_path,
-                #          otsu_thresholds=thresh, annotation_filename=annotation_path, stage=stage)
                 self.current_slide_name = slide_name
                 self.current_slide = slide
             else:
@@ -127,20 +101,49 @@ class CAMELYON16Dataset(Dataset):
             data['slide_name'] = '' #TODO: same here, why not None or leave out?
         data['data_id'] = i
         return data
+
+
+class CamelyonFeatures(Dataset):
+
+    def open_hdf5(self):
+        self.dataset = h5py.File(self.data_dir, 'r')
+
+    def select_slides(self):
+        h5_data = h5py.File(self.data_dir, 'r')
+        self.slide_names = list(h5_data.keys())
+
+        #self.slide_names = [slide_name for slide_name in self.slide_names]#if 'tumor' in slide_name
+        self.data_len = len(self.slide_names)
+
+        h5_data.close()
+
+    def __init__(self, conf, train=True):
+
+        self.tasks = conf.tasks
+
+        # TODO: switch fname pattern also in feature extraction phase
+        filename = 'feat_{}_nopretr_480ep.hdf5'.format('train' if train else 'test') #'camelyon_{}.hdf5'.format('train' if train else 'test')
+        #filename = 'byol_cam16_0_thresh0.01_byol500_centercr_{}.hdf5'.format('train' if train else 'test')
+        self.data_dir = os.path.join(conf.data_dir, filename)
+
+        self.select_slides()
     
-    #TODO: is this needed?
-    """
-    def get_bounds_of_slide(self, name):
-        slide = self.mgr.get_slide(name)
+    def __len__(self):
+        return self.data_len
 
-        xy = self.coords_df[self.coords_df['name'] == name][['x', 'y']].values
-        x = xy[:,0]
-        y = xy[:,1]
+    def __getitem__(self, i):
+        
+        if not hasattr(self, 'dataset'):
+            self.open_hdf5()
 
-        downsample = slide.level_downsamples[self.lvl]
-        tile_size0 = int(self.tile_size * downsample + 0.5)
+        slide_name = self.slide_names[i]
 
-        bounds = ((x, y), (tile_size0, tile_size0))
+        slide = self.dataset[slide_name]
+        patches = slide['img'][:]
+        label = slide.attrs['label']
 
-        return bounds
-    """
+        data_dict = {'input': patches}
+        for task in self.tasks.values():
+            data_dict[task['name']] = label
+
+        return data_dict

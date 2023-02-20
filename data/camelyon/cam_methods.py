@@ -5,8 +5,8 @@ import datetime
 from skimage.draw import polygon as ski_polygon
 from skimage.measure import label as ski_label
 
-from datasets.camelyon.datamodel import Slide
-from datasets.camelyon.cam_utils import ProgressBar
+from data.camelyon.datamodel import Slide
+from data.camelyon.cam_utils import ProgressBar
 
 def remove_alpha_channel(image: np.ndarray) -> np.ndarray:
     """

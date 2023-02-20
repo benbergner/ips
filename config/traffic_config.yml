@@ -2,16 +2,17 @@
 n_epoch: 150          # number of epochs
 B: 16                 # batch size
 B_seq: 16             # sequential batch size, set either to
-                      # 1 (eager sequential loading) or B (eager or lazy loading)
+                      # B (eager and lazy loading) or 1 (eager sequential loading)
 n_epoch_warmup: 10    # number of warm-up epochs
 lr: 0.0003            # learning rate
 wd: 0.1               # weight decay
 
 #dset
-n_class: 4                          # number of classes
-data_dir: 'datasets/traffic/dsets'  # directory of dataset
-n_worker: 8                         # number of workers
-eager: True                         # eager or lazy loading
+n_class: 4                      # number of classes
+data_dir: 'data/traffic/dsets'  # directory of dataset
+n_worker: 8                     # number of workers
+pin_memory: True                # use pin memory in dataloader
+eager: True                     # eager or lazy loading
 
 #misc
 eps: 0.000001
@@ -20,7 +21,7 @@ track_efficiency: False # for training, needs to be False
 track_epoch: 0          # only relevant if efficiency stats are tracked.
 
 #enc
-use_patch_enc: True     # should a patch encoder be used?
+is_image: True          # should a convolutional patch encoder be used?
 enc_type: 'resnet18'    # used backbone, set either to 'resnet18' or 'resnet50'
 pretrained: True        # should ImageNet weights be used?
 n_chan_in: 3            # number of input channels

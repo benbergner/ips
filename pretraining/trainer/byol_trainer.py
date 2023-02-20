@@ -12,7 +12,7 @@ from apex import amp
 
 from pretraining.model.byol_model import BYOLModel
 from pretraining.model.larssgd import LARS
-from pretraining.data.camelyon_loader import CAMELYONLoader
+from pretraining.dataloader.camelyon_loader import CAMELYONLoader
 from pretraining.utils import params_util, logging_util, eval_util
 from pretraining.utils.data_prefetcher import data_prefetcher
 
@@ -163,9 +163,10 @@ class BYOLTrainer():
         self.data_ins.set_epoch(epoch)
 
         prefetcher = data_prefetcher(self.train_loader)
-        images, _ = prefetcher.next()
+        images, _, ID = prefetcher.next()
         i = 0
         while i < self.num_examples // self.global_batch_size:
+            #print("ID: ", ID[0], ", i: ", i, ", till: ", self.num_examples // self.global_batch_size)
             i += 1
             self.adjust_learning_rate(self.steps)
             self.adjust_mm(self.steps)
@@ -210,4 +211,4 @@ class BYOLTrainer():
                         f'Forward Time {forward_time.val:.4f} ({forward_time.avg:.4f})\t'
                         f'Backward Time {backward_time.val:.4f} ({backward_time.avg:.4f})\t')
 
-            images, _ = prefetcher.next()
+            images, _, ID = prefetcher.next()

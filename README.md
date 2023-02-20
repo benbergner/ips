@@ -34,7 +34,7 @@ For example: `python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mn
 1. Download the CAMELYON16 dataset (up-to-date links can be found on Grand Challenge)
 2. Compute Otsu thresholds by running `data/camelyon/otsu.py`
 3. Extract foreground coordinates by running `data/camelyon/foreground.py`
-4. Pre-train with BYOL by running `pretraining/byol_main.py`
+4. Pre-train with BYOL. We adapted the implementation of https://github.com/yaox12/BYOL-PyTorch
 5. Extract features from pre-trained model by running `data/camelyon/extract_feat.py`
 
 ## Citation

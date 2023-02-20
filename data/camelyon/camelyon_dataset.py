@@ -50,9 +50,9 @@ class PatchSampler(Sampler):
 
 class CamelyonImages(Dataset):
 
-    def __init__(self, data_dir, coords_df, lvl, tile_size):
+    def __init__(self, data_dir, otsu_fname, coords_df, lvl, tile_size):
 
-        self.slide_man = SlideManager(data_dir=data_dir)
+        self.slide_man = SlideManager(data_dir=data_dir, otsu_fname=otsu_fname)
         self.coords_df = coords_df
 
         self.lvl = lvl
@@ -62,8 +62,7 @@ class CamelyonImages(Dataset):
             transforms.Lambda(lambda x: remove_alpha_channel(np.asarray(x))),
             transforms.ToPILImage(),
             transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+            transforms.ToTensor()
         ]
         self.transform = transforms.Compose(transform_list)
 
@@ -95,10 +94,11 @@ class CamelyonImages(Dataset):
             data['pos_id'] = pos_id
             data['slide_name'] = slide_name
         else:
-            data['patch'] = torch.zeros((3, 224, 224))
+            # Set dummy data except for label, which is used to identify dummy
+            data['patch'] = torch.empty((3, 224, 224))
             data['label'] = -1
-            data['pos_id'] = 9999 #TODO: why not None or not fill at all?
-            data['slide_name'] = '' #TODO: same here, why not None or leave out?
+            data['pos_id'] = 9999
+            data['slide_name'] = ''
         data['data_id'] = i
         return data
 
@@ -111,19 +111,14 @@ class CamelyonFeatures(Dataset):
     def select_slides(self):
         h5_data = h5py.File(self.data_dir, 'r')
         self.slide_names = list(h5_data.keys())
-
-        #self.slide_names = [slide_name for slide_name in self.slide_names]#if 'tumor' in slide_name
         self.data_len = len(self.slide_names)
-
         h5_data.close()
 
     def __init__(self, conf, train=True):
 
         self.tasks = conf.tasks
 
-        # TODO: switch fname pattern also in feature extraction phase
-        filename = 'feat_{}_nopretr_480ep.hdf5'.format('train' if train else 'test') #'camelyon_{}.hdf5'.format('train' if train else 'test')
-        #filename = 'byol_cam16_0_thresh0.01_byol500_centercr_{}.hdf5'.format('train' if train else 'test')
+        filename = conf.train_fname if train else conf.test_fname
         self.data_dir = os.path.join(conf.data_dir, filename)
 
         self.select_slides()

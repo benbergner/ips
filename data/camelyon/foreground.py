@@ -57,11 +57,14 @@ parser.add_argument(
     "data_dir",
     help="The directory where the CAMELYON16 dataset is located"
 )
-#TODO: Add correct helper text!
+parser.add_argument(
+    "otsu_fname",
+    help="The name of the file that holds Otsu thresholds."
+)
 parser.add_argument(
     "out_dir",
     help="Directory where foreground coordinates shall be stored. " + \
-    "Filenames will be coords_{train/test}.pkl and bounds_{train/test}.pkl corresponding to ..."
+    "Filenames will be coords_{train/test}.pkl and bounds_{train/test}.pkl"
 )
 
 args = parser.parse_args()
@@ -75,6 +78,7 @@ fg_perc_thresh = args.fg_perc_thresh
 overlap = args.overlap
 n_worker = args.n_worker
 data_dir = args.data_dir
+otsu_fname = args.otsu_fname
 out_dir = args.out_dir
 
 subset = 'train' if train else 'test'
@@ -87,7 +91,6 @@ def get_foreground_coords(name):
     tile_iter = split_slide(slide, lvl, otsu_threshold, fg_perc_thresh, tile_size, overlap)
     
     x_vals, y_vals = [], []
-    # TODO: _ needed?
     for _, bounds in tile_iter:
         x, y = bounds[0]
         x_vals.append(x)
@@ -97,7 +100,7 @@ def get_foreground_coords(name):
 
     return x_vals, y_vals, names
 
-slide_man = SlideManager(data_dir=data_dir)
+slide_man = SlideManager(data_dir=data_dir, otsu_fname=otsu_fname)
 slide_names = slide_man.get_slide_names_subset(train=train)
 
 # Computing of foreground coordinates can take a long time, thus parallelize
@@ -142,8 +145,6 @@ bounds_df = pd.DataFrame(
         'end_id': end_idx
     }
 )
-# TODO: len slide names and start_idx should always be the same
-
 coords_df = pd.DataFrame(
     {
         'id': all_idx,

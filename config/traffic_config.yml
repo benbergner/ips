@@ -17,8 +17,8 @@ eager: True                     # eager or lazy loading
 #misc
 eps: 0.000001
 seed: 0
-track_efficiency: False # for training, needs to be False
-track_epoch: 0          # only relevant if efficiency stats are tracked.
+track_efficiency: False   # for training, needs to be False
+track_epoch: 0            # only relevant if efficiency stats are tracked.
 
 #enc
 is_image: True          # should a convolutional patch encoder be used?
@@ -32,25 +32,24 @@ shuffle: True                 # should patches be shuffled?
 shuffle_style: 'batch'        # shuffle each instance the same way? 'batch' or 'instance'
 n_token: 1                    # Number of learnable query tokens
 N: 192                        # Number of total patches, needs to be consistent with patch size/stride
-M: 10                          # memory size
+M: 10                         # memory size
 I: 32                         # iteration size
 patch_size: [100, 100]        # dims of patch
-patch_stride: [100, 100]      # stride of patch, use 25 per side for 50% overlap
+patch_stride: [100, 100]      # stride of patch
 
 #aggr
-use_pos: False                            # should positional encoding be used?
-H: 8                                      # number of transformer layer heads
-D: 512                                    # dimension of features
-D_k: 64                                   # dimension of query/keys per head
-D_v: 64                                   # dimension of values per head
-D_inner: 2048                              # hidden dimension of MLP
-attn_dropout: 0.1                          # attention dropout
-dropout: 0.1                              # standard dropout
+use_pos: False        # should positional encoding be used?
+H: 8                  # number of transformer layer heads
+D: 512                # dimension of features
+D_k: 64               # dimension of query/keys per head
+D_v: 64               # dimension of values per head
+D_inner: 2048         # hidden dimension of MLP
+attn_dropout: 0.1     # attention dropout
+dropout: 0.1          # standard dropout
 
 tasks:
   task0:
     id: 0
     name: 'sign'
     act_fn: 'softmax'
-    multi_label: False
     metric: 'accuracy'

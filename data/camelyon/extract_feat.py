@@ -12,7 +12,6 @@ from pretraining.model.byol_model import BYOLModel
 from data.camelyon.camelyon_dataset import CamelyonImages, PatchSampler
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 parser = argparse.ArgumentParser(
@@ -58,6 +57,10 @@ parser.add_argument(
     help="The directory where the CAMELYON16 dataset is located"
 )
 parser.add_argument(
+    "otsu_fname",
+    help="The name of the file that holds Otsu thresholds."
+)
+parser.add_argument(
     "bounds_dir",
     help="The directory where the bounds file is located"
 )
@@ -84,6 +87,7 @@ tile_size = args.tile_size
 batch_size = args.batch_size
 num_workers = args.num_workers
 data_dir = args.data_dir
+otsu_fname = args.otsu_fname
 bounds_dir = args.bounds_dir
 coords_dir = args.coords_dir
 model_dir = args.model_dir
@@ -93,8 +97,7 @@ feat_save_dir = args.feat_save_dir
 bounds_df = pd.read_pickle(bounds_dir)
 coords_df = pd.read_pickle(coords_dir)
 sampler = PatchSampler(bounds_df, batch_size=batch_size)
-dataset = CamelyonImages(data_dir, coords_df, lvl, tile_size)
-#TODO: why batch size in sampler and loader?
+dataset = CamelyonImages(data_dir, otsu_fname, coords_df, lvl, tile_size)
 dataloader = DataLoader(dataset, batch_size=batch_size, sampler=sampler, num_workers=num_workers)
 
 h5file = h5py.File(feat_save_dir, "w")
@@ -148,7 +151,6 @@ with torch.no_grad():
         if patches.shape[0] > 0:
             features = net(patches)
             b, n_feat = features.shape[:2]
-            #TODO: is this needed?
             features = features.view(b, n_feat)
 
             feature_list.append(features)

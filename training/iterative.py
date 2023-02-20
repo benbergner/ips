@@ -21,7 +21,7 @@ def init_batch(device, conf):
     # Init the labels for the batch (for multiple tasks in mnist)
     labels = {}
     for task in conf.tasks.values():
-        if task['multi_label']:
+        if task['metric'] == 'multilabel_accuracy':
             labels[task['name']] = torch.zeros((conf.B, conf.n_class), dtype=torch.float32).to(device)
         else:
             labels[task['name']] = torch.zeros((conf.B,), dtype=torch.int64).to(device)
@@ -74,7 +74,7 @@ def compute_loss(net, mem_patch, mem_pos_enc, criterions, labels, conf):
     loss = 0
     task_losses, task_preds, task_labels = {}, {}, {}
     for task in conf.tasks.values():
-        t_name, t_act, t_multi = task['name'], task['act_fn'], task['multi_label']
+        t_name, t_act = task['name'], task['act_fn']
 
         criterion = criterions[t_name]
         label = labels[t_name]
@@ -84,16 +84,8 @@ def compute_loss(net, mem_patch, mem_pos_enc, criterions, labels, conf):
             pred_loss = torch.log(pred + conf.eps)
             label_loss = label
         else:
-            pred_loss = pred#.view(-1)
+            pred_loss = pred.view(-1)
             label_loss = label.view(-1).type(torch.float32)
-
-        """
-        if t_multi:
-            #pred_loss = pred_loss.view(-1)
-            label_loss = label.view(-1) #label to be used in loss function
-        else:
-            label_loss = label
-        """
 
         task_loss = criterion(pred_loss, label_loss)
         # for logs

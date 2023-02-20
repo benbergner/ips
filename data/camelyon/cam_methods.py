@@ -353,7 +353,5 @@ def split_slide(slide: Slide, lvl, otsu_threshold,
             otsu_mask = create_otsu_mask_by_threshold(rgb2gray(tile), otsu_threshold)
 
             fg_count = np.sum(otsu_mask)
-            #TODO: is yielding of tile required here?
-            #TODO: is yielding tile size required?
             if fg_count >= min_fg_count or pos_count > 0:
                 yield remove_alpha_channel(tile), ((x, y), (tile_size0, tile_size0))

@@ -8,17 +8,17 @@ lr: 0.001             # learning rate
 wd: 0.1               # weight decay
 
 #dset
-n_class: 10                                                       # number of classes
-data_dir: 'data/megapixel_mnist/dsets/megapixel_mnist_1500'       # directory of dataset
-n_worker: 8                                                       # number of workers
-pin_memory: True                                                  # use pin memory in dataloader
-eager: True                                                       # eager or lazy loading
+n_class: 10                                                   # number of classes
+data_dir: 'data/megapixel_mnist/dsets/megapixel_mnist_1500'   # directory of dataset
+n_worker: 8                                                   # number of workers
+pin_memory: True                                              # use pin memory in dataloader
+eager: True                                                   # eager or lazy loading
 
 #misc
 eps: 0.000001
 seed: 0
-track_efficiency: False # for training, needs to be False
-track_epoch: 0          # only relevant if efficiency stats are tracked.
+track_efficiency: False   # for training, needs to be False
+track_epoch: 0            # only relevant if efficiency stats are tracked.
 
 #enc
 is_image: True          # should a convolutional patch encoder be used?
@@ -38,38 +38,34 @@ patch_size: [50, 50]        # dims of patch
 patch_stride: [50, 50]      # stride of patch, use 25 per side for 50% overlap
 
 #aggr
-use_pos: True                             # should positional encoding be used?
-H: 8                                      # number of transformer layer heads
-D: 128                                    # dimension of features
-D_k: 16                                   # dimension of query/keys per head
-D_v: 16                                   # dimension of values per head
-D_inner: 512                              # intermediate layer dimension in MLP
-attn_dropout: 0.1                         # attention dropout
-dropout: 0.1                              # standard dropout
+use_pos: True       # should positional encoding be used?
+H: 8                # number of transformer layer heads
+D: 128              # dimension of features
+D_k: 16             # dimension of query/keys per head
+D_v: 16             # dimension of values per head
+D_inner: 512        # intermediate layer dimension in MLP
+attn_dropout: 0.1   # attention dropout
+dropout: 0.1        # standard dropout
 
-# define name, activation fn of final layer, whether multi-label, and metric to be used
+# define name, activation fn of final layer and metric to be used
 tasks:
   task0:
     id: 0
     name: 'majority'
     act_fn: 'softmax'
-    multi_label: False
     metric: 'accuracy'
   task1:
     id: 1
     name: 'max'
     act_fn: 'softmax'
-    multi_label: False
     metric: 'accuracy'
   task2:
     id: 2
     name: 'top'
     act_fn: 'softmax'
-    multi_label: False
     metric: 'accuracy'
   task3:
     id: 3
     name: 'multi'
     act_fn: 'sigmoid'
-    multi_label: True
     metric: 'multilabel_accuracy'

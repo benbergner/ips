@@ -2,23 +2,15 @@ import os
 import csv
 from collections import defaultdict, OrderedDict, namedtuple
 from typing import Tuple, Sequence, Any
-#import logging
 
 from PIL import Image
-import numpy as np
 import openslide
 import xml.etree.ElementTree as Xml
-from skimage.draw import polygon as ski_polygon
-from skimage import segmentation
-from skimage.morphology import dilation
 
 from data.camelyon.cam_utils import Point, get_relative_polygon, draw_polygon, find_files
 
-#logger = LogStyleAdapter(logging.getLogger('preprocessing.slide'))
-
 _RawAnnotation = namedtuple('RawAnnotation', 'name type_ part_of_group color polygon')
 
-#TODO: Are annotations actually required?
 class Annotation:
     """Annotation class to provide access to a tumor annotation.
 
@@ -317,35 +309,6 @@ class Slide(openslide.OpenSlide):
         else:
             return None
 
-    # TODO: Where is this method used?
-    def get_annotation_heatmap(self, level=4, color=(0,0,0), alpha=1.):
-        """
-        Return contour of all annotations
-        """
-
-        width, height = self.level_dimensions[level]
-        downsample = self.level_downsamples[level]
-
-        img = np.zeros((height, width, 4), dtype=np.uint8)
-        for it, annotation in enumerate(self.annotations):
-        
-            r = (np.array([p.y for p in annotation.polygon]) / downsample).astype(int)
-            c = (np.array([p.x for p in annotation.polygon]) / downsample).astype(int)
-
-            rr, cc = ski_polygon(r, c)
-            img[rr, cc] = 1
-
-        img = segmentation.find_boundaries(img, mode='thick').astype(np.uint8)
-        # Dilate boundary
-        for i in range(2):#8
-            img = dilation(img)
-
-        img[:,:,np.arange(3)] *= np.array(color, dtype=np.uint8)
-        img[:,:,3] *= int(alpha * 255)
-        img = Image.fromarray(img).convert('RGBA')
-        
-        return img
-
     def __repr__(self):
         if self.is_annotated:
             repr_str = "{}({!r}, {!r}, {!r}, {!r})"
@@ -371,7 +334,7 @@ class SlideManager:
         All slides that have annotations.
     """
 
-    def __init__(self, *, data_dir):
+    def __init__(self, *, data_dir, otsu_fname):
         """
         Initialize the CAMELYON data set.
 
@@ -393,7 +356,6 @@ class SlideManager:
         self.num_negative_train = 0
 
         data_dir = os.path.expanduser(data_dir)
-        #TODO: make otsu directory an additional argument.
         self._path = {
             'dir': data_dir,
             'negative': os.path.join(data_dir, 'training/normal'),
@@ -401,7 +363,7 @@ class SlideManager:
             'annotations': os.path.join(data_dir, 'training/lesion_annotations'),
             'test': os.path.join(data_dir, 'testing/images'),
             'test_annotations': os.path.join(data_dir, 'testing/lesion_annotations'),
-            'otsu': os.path.join(data_dir, 'otsu_thresholds_iclr.csv')
+            'otsu': os.path.join(data_dir, otsu_fname)
         }
         self.__load_data()
 
@@ -451,7 +413,7 @@ class SlideManager:
             self.slide_paths[slide_name] = slide_path
             self.annotation_paths[slide_name] = annotation_path
             self.annotated_slides += (slide,)
-            # TODO: num_positive train and negative train required?
+    
             self.num_positive_train += 1
 
         # test slides

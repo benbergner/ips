@@ -25,7 +25,7 @@ parser.add_argument(
     help="The directory where the CAMELYON16 dataset is located"
 )
 parser.add_argument(
-    "out_dir",
+    "otsu_fname",
     help="The directory where to store otsu thresholds."
 )
 
@@ -35,10 +35,10 @@ args = parser.parse_args()
 lvl = args.lvl
 n_worker = args.n_worker
 data_dir = args.data_dir
-out_dir = args.out_dir
+otsu_fname = args.otsu_fname
 
 # Create slide manager to access all slides
-slide_man = SlideManager(data_dir=data_dir)    
+slide_man = SlideManager(data_dir=data_dir, otsu_fname=otsu_fname)
 
 # Multiprocessing function
 def get_slide_threshold(name):

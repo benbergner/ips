@@ -11,17 +11,19 @@ Iterative Patch Selection (IPS) is a simple patch-based approach that decouples 
 arXiv: https://arxiv.org/abs/2210.13007    
 openreview: https://openreview.net/forum?id=QCrw0u9LQ7
 
-## General usage
+## Usage
 
-IPS is applied to 3 datasets: Traffic signs, Megapixel MNIST and CAMELYON16.  
+IPS is applied to 3 datasets: Traffic signs, Megapixel MNIST and CAMELYON16.
 The dataset can be set in `main.py`, by changing variable `dataset` to either traffic, mnist or camelyon.  
 All other settings can be specified in `config/{dataset}.yml`.
 
 To train a model, simply run: `python main.py`
 
+The repo covers different data loading options (eager, eager sequential, lazy), positional encoding, tracking of efficiency metrics, single and multi-task learning and different loss functions.
+
 ## Notebook
 
-The repo covers different data loading options (eager, eager sequential, lazy), positional encoding, tracking of efficiency metrics, single and multi-task learning and different loss functions. However, there is also a simple example prepared as a Jupyter notebook (`ips_example.ipynb`) that can be imported into Google Colab, for example.
+We provide a simple example prepared as a Jupyter notebook (`ips_example.ipynb`) that can be imported into Google Colab, for example.
 
 ## Dataset specific considerations
 
@@ -30,12 +32,12 @@ The repo covers different data loading options (eager, eager sequential, lazy), 
 **Megapixel MNIST**: Before training, the dataset needs to be created by running `data/megapixel_mnist/make_mnist.py`.  
 For example: `python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mnist_1500`.
 
-**CAMELYON16**: Requires more preprocessing steps and resources (time, hardware). Before training, the following needs to be done:
-1. Download the CAMELYON16 dataset (up-to-date links can be found on Grand Challenge)
-2. Compute Otsu thresholds by running `data/camelyon/otsu.py`
-3. Extract foreground coordinates by running `data/camelyon/foreground.py`
-4. Pre-train with BYOL. We adapted the implementation of https://github.com/yaox12/BYOL-PyTorch
-5. Extract features from pre-trained model by running `data/camelyon/extract_feat.py`
+**CAMELYON16**: Requires multiple preprocessing steps and significantly more resources (time, hardware). Before training, the following needs to be done:
+1. Download of the CAMELYON16 dataset (up-to-date links can be found on Grand Challenge)
+2. Computing Otsu thresholds by running `data/camelyon/otsu.py`
+3. Extracting foreground coordinates by running `data/camelyon/foreground.py`
+4. Pre-training with BYOL. We adapted the implementation of https://github.com/yaox12/BYOL-PyTorch
+5. Extracting of features from the pre-trained model by running `data/camelyon/extract_feat.py`
 
 ## Citation
 ```bibtex

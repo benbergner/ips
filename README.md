@@ -41,10 +41,10 @@ For example: `python make_mnist.py --width 1500 --height 1500 dsets/megapixel_mn
 
 ## Citation
 ```bibtex
-@article{bergner2022iterative,
-  title={Iterative Patch Selection for High-Resolution Image Recognition},
+@inproceedings{bergner2022iterative,
+  title={Iterative patch selection for high-resolution image recognition},
   author={Bergner, Benjamin and Lippert, Christoph and Mahendran, Aravindh},
-  journal={arXiv preprint arXiv:2210.13007},
+  booktitle={International Conference on Learning Representations},
   year={2022}
 }
 ```
